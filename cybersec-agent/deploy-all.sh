@@ -50,12 +50,15 @@ DNS_RESPONSE=$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE
 
 if echo "$DNS_RESPONSE" | grep -q '"success":true'; then
     echo -e "${GREEN}✓ DNS record created successfully${NC}"
-elif echo "$DNS_RESPONSE" | grep -q "Record already exists"; then
+elif echo "$DNS_RESPONSE" | grep -q "already exists"; then
     echo -e "${GREEN}✓ DNS record already exists${NC}"
 else
     echo -e "${RED}✗ Failed to create DNS record${NC}"
     echo "$DNS_RESPONSE"
-    exit 1
+    # Don't exit on DNS error if record already exists
+    if ! echo "$DNS_RESPONSE" | grep -q "already exists"; then
+        exit 1
+    fi
 fi
 
 # Step 2: Deploy Worker

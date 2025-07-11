@@ -204,6 +204,10 @@ gen-agent-generator: ## Generate agent generator agent (Python)
 	@echo "$(YELLOW)Generating Agent Generator Agent...$(NC)"
 	$(MAKE) generate-python CONFIG=configs/agent-generator.json OUTPUT=agent-generator
 
+deploy-agent-generator: ## Deploy the agent generator
+	@echo "$(YELLOW)🚀 Deploying Agent Generator...$(NC)"
+	$(MAKE) deploy-agent AGENT=agent-generator
+
 list-configs: ## List all available agent configurations
 	@echo "$(YELLOW)📋 Available Configurations:$(NC)"
 	@echo ""

@@ -29,23 +29,45 @@ This framework enables rapid development of specialized AI agents that can work 
 
 ## 🚀 Quick Start
 
-### Choose Your Language
-
-#### 🟨 JavaScript (Recommended for Production)
+### Development Setup
 ```bash
-cd generators/javascript
-node build-agent.js configs/cybersec-router.json ../../cybersec-js
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies
+make install-dev
+
+# See all available commands
+make help
 ```
 
-#### 🐍 Python (Great for Development)
+### Generate Your First Agent
+
+#### 🟨 JavaScript Agent
 ```bash
-cd generators/python  
-python3 agent_builder.py configs/cybersec-router.json ../../cybersec-py
+make generate-js CONFIG=generators/javascript/configs/cybersec-router.json OUTPUT=agents/my-js-agent
+```
+
+#### 🐍 Python Agent  
+```bash
+make generate-py CONFIG=generators/python/configs/cybersec-router.json OUTPUT=agents/my-py-agent
+```
+
+#### 🚀 Quick Examples
+```bash
+# Generate common agents
+make gen-cybersec-router     # Cybersec router agent
+make gen-judge-specialist    # Judge specialist agent
+make gen-agent-generator     # Agent generator agent
 ```
 
 ### Deploy Your Agent
 ```bash
-cd your-agent-directory
+# Deploy any agent
+make deploy-agent AGENT=agents/my-agent
+
+# Or manually
+cd agents/my-agent
 export CLOUDFLARE_API_TOKEN="your-token-here"
 ./scripts/deploy.sh
 ```
@@ -55,24 +77,41 @@ export CLOUDFLARE_API_TOKEN="your-token-here"
 ```
 agent-framework/
 ├── README.md                    # This file
-├── generators/                  # Language-specific generators
-│   ├── javascript/             # JavaScript/Node.js generator
-│   │   ├── agent-builder.js    # JS agent builder
-│   │   ├── base-agent.js       # JS base agent class
-│   │   ├── router-agent.js     # JS router implementation
-│   │   ├── tool-registry.js    # JS routing logic
-│   │   ├── config-schema.js    # Configuration validation
-│   │   ├── build-agent.js      # CLI build tool
-│   │   └── configs/            # Example JS configurations
-│   └── python/                 # Python generator  
-│       ├── agent_builder.py    # Python agent builder
-│       ├── agent_framework/    # Python framework modules
+├── pyproject.toml              # Python project configuration (uv)
+├── Makefile                    # Development commands
+├── generators/                 # Language-specific generators
+│   ├── javascript/            # JavaScript/Node.js generator
+│   │   ├── agent-builder.js   # JS agent builder
+│   │   ├── base-agent.js      # JS base agent class
+│   │   ├── router-agent.js    # JS router implementation
+│   │   ├── tool-registry.js   # JS routing logic
+│   │   ├── config-schema.js   # Configuration validation
+│   │   ├── build-agent.js     # CLI build tool
+│   │   └── configs/           # Example JS configurations
+│   └── python/                # Python generator  
+│       ├── agent_builder.py   # Python agent builder
+│       ├── agent_framework/   # Python framework modules
 │       │   ├── __init__.py
-│       │   ├── base_agent.py   # Python base agent class
+│       │   ├── base_agent.py  # Python base agent class
 │       │   ├── router_agent.py # Python router implementation
-│       │   └── tool_registry.py # Python routing logic
-│       └── configs/            # Example Python configurations
-└── docs/                       # Documentation
+│       │   ├── tool_registry.py # Python routing logic
+│       │   ├── generator_agent.py # Agent generator
+│       │   ├── enhanced_agent_generator.py # GitHub integration
+│       │   └── github_client.py # GitHub API client
+│       └── configs/           # Example Python configurations
+├── generated-agents/          # Auto-generated agents (GitOps)
+│   ├── router-agents/        # Router agents
+│   └── specialist-agents/    # Specialist agents
+├── agents/                   # Manual agents and examples
+│   ├── agent-generator-test/ # Agent Generator deployment
+│   ├── cybersec-agent/      # Example cybersec agent
+│   ├── judge/               # Example judge agent
+│   └── threat-intel-test/   # Example threat intel agent
+├── .github/workflows/       # CI/CD automation
+│   ├── deploy-agents.yml   # Deploy generated agents
+│   └── cleanup-agents.yml  # Remove deleted agents
+└── infrastructure/         # Infrastructure as Code
+    └── pulumi/             # Pulumi configurations
 ```
 
 ## 🔧 Language Comparison
@@ -237,40 +276,56 @@ All agents automatically expose MCP endpoints:
 
 ## 🛠️ Development Workflow
 
-### 1. Choose Your Language
+### 1. Setup Development Environment
 ```bash
-# JavaScript
-cd generators/javascript
+# One-time setup
+make dev-setup
 
-# Python  
-cd generators/python
+# Daily development
+make qa  # Run format, lint, type-check, test
 ```
 
 ### 2. Create Configuration
 ```bash
 # Copy and modify example
-cp configs/judge-specialist.json configs/my-specialist.json
+cp generators/python/configs/judge-specialist.json generators/python/configs/my-specialist.json
 # Edit configuration for your domain
 ```
 
 ### 3. Generate Agent
 ```bash
-# JavaScript
-node build-agent.js configs/my-specialist.json ../my-agent
+# Using make commands (recommended)
+make generate-py CONFIG=generators/python/configs/my-specialist.json OUTPUT=agents/my-agent
 
-# Python
-python3 agent_builder.py configs/my-specialist.json ../my-agent
+# Or directly
+cd generators/python
+uv run python agent_builder.py configs/my-specialist.json ../../agents/my-agent
 ```
 
 ### 4. Deploy Agent
 ```bash
-cd ../my-agent
+# Using make (recommended)
+make deploy-agent AGENT=agents/my-agent
+
+# Or manually
+cd agents/my-agent
 export CLOUDFLARE_API_TOKEN="your-token"
 ./scripts/deploy.sh
 ```
 
-### 5. Register with Router
-Add the new specialist to your router's registry configuration and redeploy.
+### 5. Development Commands
+```bash
+# Quality assurance
+make format      # Format code
+make lint        # Check linting
+make type-check  # Type checking
+make test        # Run tests
+
+# Project maintenance
+make clean       # Clean build artifacts
+make update      # Update dependencies
+make info        # Show project info
+```
 
 ## 🐛 Troubleshooting
 

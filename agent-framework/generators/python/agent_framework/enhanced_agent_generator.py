@@ -1,87 +1,81 @@
 """
 Enhanced Agent Generator with GitHub Integration
 """
+
 import json
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Any
+
 from .github_client import GitHubMCPClient
 
 
 class EnhancedAgentGenerator:
     """Enhanced agent generator that creates agents and commits them to GitHub"""
-    
+
     def __init__(self, github_token: str, repo_owner: str, repo_name: str):
         self.github_client = GitHubMCPClient(github_token, repo_owner, repo_name)
-        
-    def get_default_config(self, agent_type: str) -> Dict[str, Any]:
+
+    def get_default_config(self, agent_type: str) -> dict[str, Any]:
         """Get default configuration for agent type"""
         defaults = {
-            'model': '@cf/meta/llama-3.1-8b-instruct',
-            'maxTokens': 512,
-            'temperature': 0.3,
-            'cacheEnabled': True,
-            'cacheTTL': 3600,
-            'icon': '🤖',
-            'placeholder': 'Ask a question...',
-            'aiLabel': 'AI Assistant',
-            'footer': 'Built with Cloudflare Workers AI',
-            'examples': []
+            "model": "@cf/meta/llama-3.1-8b-instruct",
+            "maxTokens": 512,
+            "temperature": 0.3,
+            "cacheEnabled": True,
+            "cacheTTL": 3600,
+            "icon": "🤖",
+            "placeholder": "Ask a question...",
+            "aiLabel": "AI Assistant",
+            "footer": "Built with Cloudflare Workers AI",
+            "examples": [],
         }
-        
-        if agent_type == 'router':
-            defaults.update({
-                'type': 'router',
-                'registry': {'tools': []}
-            })
-        elif agent_type == 'specialist':
-            defaults.update({
-                'type': 'specialist',
-                'keywords': [],
-                'patterns': [],
-                'priority': 5
-            })
-        
+
+        if agent_type == "router":
+            defaults.update({"type": "router", "registry": {"tools": []}})
+        elif agent_type == "specialist":
+            defaults.update({"type": "specialist", "keywords": [], "patterns": [], "priority": 5})
+
         return defaults
-    
+
     def make_class_name(self, name: str) -> str:
         """Convert agent name to valid Python class name"""
-        words = ''.join(c if c.isalnum() or c.isspace() else ' ' for c in name).split()
-        return ''.join(word.capitalize() for word in words) + 'Agent'
-    
+        words = "".join(c if c.isalnum() or c.isspace() else " " for c in name).split()
+        return "".join(word.capitalize() for word in words) + "Agent"
+
     def make_worker_name(self, name: str) -> str:
         """Convert agent name to valid worker name"""
-        return ''.join(c if c.isalnum() or c in '-_' else '-' for c in name.lower()).strip('-')
-    
+        return "".join(c if c.isalnum() or c in "-_" else "-" for c in name.lower()).strip("-")
+
     def make_domain_name(self, domain: str) -> str:
         """Extract domain name from full domain"""
-        return domain.split('.')[0] if domain else 'agent'
-    
-    def generate_metadata(self, config: Dict[str, Any], language: str) -> str:
+        return domain.split(".")[0] if domain else "agent"
+
+    def generate_metadata(self, config: dict[str, Any], language: str) -> str:
         """Generate .agent-metadata.json content"""
         metadata = {
             "generatedAt": datetime.now().isoformat(),
-            "workerName": self.make_worker_name(config['name']),
-            "domain": config['domain'],
-            "type": config['type'],
+            "workerName": self.make_worker_name(config["name"]),
+            "domain": config["domain"],
+            "type": config["type"],
             "language": language,
-            "accountId": config['accountId'],
-            "zoneId": config['zoneId'],
-            "dependencies": []
+            "accountId": config["accountId"],
+            "zoneId": config["zoneId"],
+            "dependencies": [],
         }
-        
+
         # Add dependencies for router agents
-        if config['type'] == 'router' and 'registry' in config:
-            tools = config['registry'].get('tools', [])
-            metadata["dependencies"] = [tool.get('id', '') for tool in tools if tool.get('id')]
-        
+        if config["type"] == "router" and "registry" in config:
+            tools = config["registry"].get("tools", [])
+            metadata["dependencies"] = [tool.get("id", "") for tool in tools if tool.get("id")]
+
         return json.dumps(metadata, indent=2)
-    
-    def generate_entry_py(self, config: Dict[str, Any]) -> str:
+
+    def generate_entry_py(self, config: dict[str, Any]) -> str:
         """Generate entry.py file"""
         timestamp = datetime.now().isoformat()
-        class_name = self.make_class_name(config['name'])
-        
-        if config['type'] == 'router':
+        class_name = self.make_class_name(config["name"])
+
+        if config["type"] == "router":
             import_line = "from agent_framework import RouterAgent"
             agent_class = "RouterAgent"
             config_extra = f"    'registry': {json.dumps(config['registry'], indent=6)[6:]}"
@@ -93,7 +87,7 @@ class EnhancedAgentGenerator:
     'keywords': {json.dumps(config['keywords'])},
     'patterns': {json.dumps(config['patterns'])},
     'priority': {config['priority']}"""
-        
+
         return f'''# Auto-generated {config['type']} agent
 # Generated from configuration at {timestamp}
 
@@ -128,12 +122,12 @@ async def on_fetch(request, env):
     """Main request handler for Cloudflare Workers"""
     return await {class_name.lower()}.fetch(request, env)
 '''
-    
-    def generate_wrangler_toml(self, config: Dict[str, Any]) -> str:
+
+    def generate_wrangler_toml(self, config: dict[str, Any]) -> str:
         """Generate wrangler.toml file"""
-        worker_name = self.make_worker_name(config['name'])
-        
-        return f'''name = "{worker_name}"
+        worker_name = self.make_worker_name(config["name"])
+
+        return f"""name = "{worker_name}"
 main = "src/entry.py"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["python_workers"]
@@ -153,13 +147,13 @@ TEMPERATURE = "{config['temperature']}"
 [[routes]]
 pattern = "{config['domain']}/*"
 zone_id = "{config['zoneId']}"
-'''
-    
-    def generate_deploy_script(self, config: Dict[str, Any]) -> str:
+"""
+
+    def generate_deploy_script(self, config: dict[str, Any]) -> str:
         """Generate deployment script"""
-        worker_name = self.make_worker_name(config['name'])
-        
-        return f'''#!/bin/bash
+        worker_name = self.make_worker_name(config["name"])
+
+        return f"""#!/bin/bash
 
 # Colors for output
 RED='\\033[0;31m'
@@ -184,7 +178,7 @@ echo -e "\\n${{YELLOW}}Deploying Python Worker to Cloudflare...${{NC}}"
 
 if command -v wrangler &> /dev/null; then
     npx wrangler@latest deploy
-    
+
     if [ $? -eq 0 ]; then
         echo -e "${{GREEN}}✓ Python Worker deployed successfully${{NC}}"
         echo ""
@@ -204,13 +198,13 @@ else
     echo -e "${{RED}}Wrangler not found. Please install: npm install -g wrangler${{NC}}"
     exit 1
 fi
-'''
-    
-    def generate_readme(self, config: Dict[str, Any]) -> str:
+"""
+
+    def generate_readme(self, config: dict[str, Any]) -> str:
         """Generate README.md file"""
-        examples_md = '\\n'.join(f'- {ex}' for ex in config.get('examples', []))
-        
-        return f'''# {config['name']}
+        examples_md = "\\n".join(f"- {ex}" for ex in config.get("examples", []))
+
+        return f"""# {config['name']}
 
 {config['description']}
 
@@ -262,11 +256,11 @@ This agent is automatically available as an MCP server:
 ---
 
 *Auto-generated by Agent Generator 🏭 at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*
-'''
-    
+"""
+
     def generate_gitignore(self) -> str:
         """Generate .gitignore file for agent"""
-        return '''agent_framework/
+        return """agent_framework/
 *.pyc
 __pycache__/
 .env
@@ -275,39 +269,43 @@ __pycache__/
 .wrangler/
 node_modules/
 dist/
-'''
-    
+"""
+
     def generate_env_example(self) -> str:
         """Generate .env.local.example file"""
-        return '''export CLOUDFLARE_API_TOKEN=your-token-here
-'''
-    
-    def prepare_config(self, user_config: Dict[str, Any], language: str = "python") -> Dict[str, Any]:
+        return """export CLOUDFLARE_API_TOKEN=your-token-here
+"""
+
+    def prepare_config(
+        self, user_config: dict[str, Any], language: str = "python"
+    ) -> dict[str, Any]:
         """Prepare and validate configuration"""
         # Merge with defaults
-        config_type = user_config.get('type', 'specialist')
+        config_type = user_config.get("type", "specialist")
         full_config = {**self.get_default_config(config_type), **user_config}
-        
+
         # Auto-generate missing fields
-        if 'mcpToolName' not in full_config and config_type == 'specialist':
-            full_config['mcpToolName'] = self.make_worker_name(full_config['name'])
-        
-        if 'expertise' not in full_config and config_type == 'specialist':
-            full_config['expertise'] = full_config.get('description', 'specialized assistance')
-        
+        if "mcpToolName" not in full_config and config_type == "specialist":
+            full_config["mcpToolName"] = self.make_worker_name(full_config["name"])
+
+        if "expertise" not in full_config and config_type == "specialist":
+            full_config["expertise"] = full_config.get("description", "specialized assistance")
+
         # Ensure required fields exist
-        required_fields = ['name', 'description', 'systemPrompt', 'domain', 'accountId', 'zoneId']
+        required_fields = ["name", "description", "systemPrompt", "domain", "accountId", "zoneId"]
         missing_fields = [field for field in required_fields if not full_config.get(field)]
-        
+
         if missing_fields:
             raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
-        
+
         return full_config
-    
-    def generate_agent_files(self, config: Dict[str, Any], language: str = "python") -> Dict[str, str]:
+
+    def generate_agent_files(
+        self, config: dict[str, Any], language: str = "python"
+    ) -> dict[str, str]:
         """Generate all files for an agent"""
         prepared_config = self.prepare_config(config, language)
-        
+
         files = {
             "src/entry.py": self.generate_entry_py(prepared_config),
             "wrangler.toml": self.generate_wrangler_toml(prepared_config),
@@ -315,48 +313,48 @@ dist/
             "README.md": self.generate_readme(prepared_config),
             ".agent-metadata.json": self.generate_metadata(prepared_config, language),
             ".gitignore": self.generate_gitignore(),
-            ".env.local.example": self.generate_env_example()
+            ".env.local.example": self.generate_env_example(),
         }
-        
+
         return files
-    
-    async def generate_and_commit_agent(self, user_config: Dict[str, Any], language: str = "python") -> Dict[str, Any]:
+
+    async def generate_and_commit_agent(
+        self, user_config: dict[str, Any], language: str = "python"
+    ) -> dict[str, Any]:
         """Complete workflow: generate agent and commit to GitHub"""
         try:
             # Generate all files
             generated_files = self.generate_agent_files(user_config, language)
-            
+
             # Prepare final config
             final_config = self.prepare_config(user_config, language)
-            
+
             # Commit to GitHub
             commit_result = await self.github_client.commit_agent(
-                final_config, 
-                generated_files, 
-                language
+                final_config, generated_files, language
             )
-            
+
             return {
                 "success": True,
-                "agent_name": final_config['name'],
-                "agent_type": final_config['type'],
+                "agent_name": final_config["name"],
+                "agent_type": final_config["type"],
                 "language": language,
-                "domain": final_config['domain'],
-                "worker_name": self.make_worker_name(final_config['name']),
+                "domain": final_config["domain"],
+                "worker_name": self.make_worker_name(final_config["name"]),
                 "files_generated": list(generated_files.keys()),
                 "github": commit_result,
                 "next_steps": [
                     f"Review the pull request: {commit_result['pr_url']}",
                     "GitHub Actions will validate the configuration",
                     "Merge the PR to deploy the agent automatically",
-                    f"Agent will be available at: https://{final_config['domain']}"
-                ]
+                    f"Agent will be available at: https://{final_config['domain']}",
+                ],
             }
-            
+
         except Exception as e:
             return {
                 "success": False,
                 "error": str(e),
-                "agent_name": user_config.get('name', 'Unknown'),
-                "suggestion": "Check your configuration and try again"
+                "agent_name": user_config.get("name", "Unknown"),
+                "suggestion": "Check your configuration and try again",
             }

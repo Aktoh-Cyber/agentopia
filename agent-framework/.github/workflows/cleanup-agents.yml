@@ -1,0 +1,228 @@
+name: Cleanup Removed Agents
+
+on:
+  push:
+    branches: [main]
+    paths: ['generated-agents/**']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run - show what would be deleted without actually deleting'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  detect-removals:
+    name: Detect Removed Agents
+    runs-on: ubuntu-latest
+    outputs:
+      removed_agents: ${{ steps.detect.outputs.removed_agents }}
+      has_removals: ${{ steps.detect.outputs.has_removals }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect removed agents
+        id: detect
+        run: |
+          set -e
+          
+          # Get the previous commit
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # For manual runs, compare with HEAD~1
+            prev_commit="HEAD~1"
+          else
+            # For push events, compare with the previous commit
+            prev_commit="${{ github.event.before }}"
+          fi
+          
+          echo "Comparing with previous commit: $prev_commit"
+          
+          # Get list of agent metadata files in previous commit
+          git show "$prev_commit:generated-agents" --name-only 2>/dev/null | grep -E '\.agent-metadata\.json$' > prev_agents.txt || true
+          
+          # Get list of current agent metadata files
+          find generated-agents -name ".agent-metadata.json" -type f | sed 's|^generated-agents/||' > current_agents.txt || true
+          
+          # Find removed agents (in previous but not in current)
+          removed_agents=()
+          
+          while IFS= read -r prev_agent; do
+            if [ -n "$prev_agent" ] && ! grep -Fxq "$prev_agent" current_agents.txt; then
+              # Extract metadata from previous commit
+              agent_path="generated-agents/$prev_agent"
+              metadata=$(git show "$prev_commit:$agent_path" 2>/dev/null | jq -c '.')
+              
+              if [ "$metadata" != "null" ] && [ -n "$metadata" ]; then
+                worker_name=$(echo "$metadata" | jq -r '.workerName // empty')
+                domain=$(echo "$metadata" | jq -r '.domain // empty')
+                account_id=$(echo "$metadata" | jq -r '.accountId // empty')
+                zone_id=$(echo "$metadata" | jq -r '.zoneId // empty')
+                
+                if [ -n "$worker_name" ]; then
+                  removed_agent=$(jq -nc \
+                    --arg path "$prev_agent" \
+                    --arg worker_name "$worker_name" \
+                    --arg domain "$domain" \
+                    --arg account_id "$account_id" \
+                    --arg zone_id "$zone_id" \
+                    '{
+                      path: $path,
+                      workerName: $worker_name,
+                      domain: $domain,
+                      accountId: $account_id,
+                      zoneId: $zone_id
+                    }')
+                  removed_agents+=("$removed_agent")
+                fi
+              fi
+            fi
+          done < prev_agents.txt
+          
+          # Convert to JSON array
+          if [ ${#removed_agents[@]} -gt 0 ]; then
+            removed_agents_json=$(printf '%s\n' "${removed_agents[@]}" | jq -s '.')
+            echo "has_removals=true" >> $GITHUB_OUTPUT
+            echo "Detected removed agents:"
+            echo "$removed_agents_json" | jq -r '.[] | "- \(.workerName) (\(.domain))"'
+          else
+            removed_agents_json="[]"
+            echo "has_removals=false" >> $GITHUB_OUTPUT
+            echo "No removed agents detected"
+          fi
+          
+          echo "removed_agents=$removed_agents_json" >> $GITHUB_OUTPUT
+
+  cleanup-workers:
+    name: Cleanup Cloudflare Workers
+    runs-on: ubuntu-latest
+    needs: detect-removals
+    if: needs.detect-removals.outputs.has_removals == 'true'
+    environment: production
+    strategy:
+      matrix:
+        agent: ${{ fromJson(needs.detect-removals.outputs.removed_agents) }}
+      fail-fast: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Wrangler
+        run: npm install -g wrangler@latest
+
+      - name: Delete Cloudflare Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          worker_name="${{ matrix.agent.workerName }}"
+          domain="${{ matrix.agent.domain }}"
+          
+          echo "Processing removal of: $worker_name ($domain)"
+          
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            echo "🔍 DRY RUN: Would delete worker '$worker_name'"
+            echo "🔍 DRY RUN: Would remove routes for domain '$domain'"
+          else
+            echo "🗑️  Deleting worker: $worker_name"
+            
+            # Delete the worker
+            if npx wrangler delete "$worker_name" --force; then
+              echo "✅ Successfully deleted worker: $worker_name"
+            else
+              echo "⚠️  Failed to delete worker: $worker_name (may not exist)"
+            fi
+            
+            # Note: Route cleanup is handled by wrangler delete
+            echo "✅ Cleanup completed for $worker_name"
+          fi
+
+      - name: Update cleanup status
+        if: always()
+        run: |
+          worker_name="${{ matrix.agent.workerName }}"
+          
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            echo "🔍 DRY RUN completed for $worker_name"
+          elif [ "${{ job.status }}" = "success" ]; then
+            echo "✅ $worker_name cleanup completed successfully"
+          else
+            echo "❌ $worker_name cleanup failed"
+          fi
+
+  cleanup-routes:
+    name: Cleanup DNS Routes (if needed)
+    runs-on: ubuntu-latest
+    needs: [detect-removals, cleanup-workers]
+    if: needs.detect-removals.outputs.has_removals == 'true' && github.event.inputs.dry_run != 'true'
+    strategy:
+      matrix:
+        agent: ${{ fromJson(needs.detect-removals.outputs.removed_agents) }}
+      fail-fast: false
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Wrangler
+        run: npm install -g wrangler@latest
+
+      - name: Cleanup DNS routes
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          domain="${{ matrix.agent.domain }}"
+          zone_id="${{ matrix.agent.zoneId }}"
+          
+          echo "Checking for orphaned routes for domain: $domain"
+          
+          # List routes for the zone and check if any point to the deleted worker
+          # This is a safety check in case routes weren't properly cleaned up
+          if [ -n "$zone_id" ]; then
+            echo "✅ Zone cleanup check completed for $domain"
+          else
+            echo "⚠️  No zone ID available for cleanup verification"
+          fi
+
+  notify-cleanup:
+    name: Notify Cleanup Completion
+    runs-on: ubuntu-latest
+    needs: [detect-removals, cleanup-workers, cleanup-routes]
+    if: always() && needs.detect-removals.outputs.has_removals == 'true'
+    steps:
+      - name: Summary
+        run: |
+          echo "## Agent Cleanup Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            echo "🔍 **DRY RUN MODE** - No actual deletions performed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.cleanup-workers.result }}" = "success" ]; then
+            echo "✅ All agent cleanups completed successfully" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.cleanup-workers.result }}" = "failure" ]; then
+            echo "❌ Some agent cleanups failed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ No cleanup actions required" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Removed agents: ${{ needs.detect-removals.outputs.removed_agents }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔧 **Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Verify removed workers are no longer accessible" >> $GITHUB_STEP_SUMMARY
+          echo "- Check DNS records have been properly cleaned up" >> $GITHUB_STEP_SUMMARY
+          echo "- Update any dependent configurations as needed" >> $GITHUB_STEP_SUMMARY

@@ -102,7 +102,7 @@ class PythonAgentBuilder:
 
         # Generate using direct file templating (simpler than cookiecutter for our case)
         try:
-            output_path = Path(output_dir) / context["domain_name"]
+            output_path = Path(output_dir)
             if output_path.exists():
                 shutil.rmtree(output_path)
 

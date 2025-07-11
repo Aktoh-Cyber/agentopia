@@ -15,7 +15,6 @@ WHITE := $(shell printf "\033[1;37m")
 NC := $(shell printf "\033[0m")
 
 # Default directories
-GENERATED_AGENTS_DIR ?= generated-agents
 AGENTS_DIR ?= agents
 PYTHON_GEN_DIR := generators/python
 JS_GEN_DIR := generators/javascript
@@ -161,9 +160,9 @@ generate-python: ## Generate a Python agent (CONFIG=path/to/config.json OUTPUT=a
 		$(MAKE) generate-python CONFIG=$$config OUTPUT=$$output; \
 	else \
 		echo "$(YELLOW)🐍 Generating Python agent...$(NC)"; \
-		mkdir -p $(GENERATED_AGENTS_DIR); \
-		cd $(PYTHON_GEN_DIR) && $(PYTHON) agent_builder.py $(CONFIG) ../../$(GENERATED_AGENTS_DIR)/$(OUTPUT); \
-		echo "$(GREEN)✅ Python agent generated at: $(GENERATED_AGENTS_DIR)/$(OUTPUT)$(NC)"; \
+		mkdir -p $(AGENTS_DIR); \
+		cd $(PYTHON_GEN_DIR) && $(PYTHON) agent_builder.py $(CONFIG) ../../$(AGENTS_DIR)/$(OUTPUT); \
+		echo "$(GREEN)✅ Python agent generated at: $(AGENTS_DIR)/$(OUTPUT)$(NC)"; \
 	fi
 
 generate-javascript: ## Generate a JavaScript agent (CONFIG=path/to/config.json OUTPUT=agent-name)
@@ -176,9 +175,9 @@ generate-javascript: ## Generate a JavaScript agent (CONFIG=path/to/config.json 
 		$(MAKE) generate-javascript CONFIG=$$config OUTPUT=$$output; \
 	else \
 		echo "$(YELLOW)📜 Generating JavaScript agent...$(NC)"; \
-		mkdir -p $(GENERATED_AGENTS_DIR); \
-		cd $(JS_GEN_DIR) && $(NODE) build-agent.js $(CONFIG) ../../$(GENERATED_AGENTS_DIR)/$(OUTPUT); \
-		echo "$(GREEN)✅ JavaScript agent generated at: $(GENERATED_AGENTS_DIR)/$(OUTPUT)$(NC)"; \
+		mkdir -p $(AGENTS_DIR); \
+		cd $(JS_GEN_DIR) && $(NODE) build-agent.js $(CONFIG) ../../$(AGENTS_DIR)/$(OUTPUT); \
+		echo "$(GREEN)✅ JavaScript agent generated at: $(AGENTS_DIR)/$(OUTPUT)$(NC)"; \
 	fi
 
 # Quick generation shortcuts
@@ -212,21 +211,16 @@ deploy-agent: ## Deploy a specific agent (AGENT=agent-name)
 	@if [ -z "$(AGENT)" ]; then \
 		echo "$(YELLOW)Available agents to deploy:$(NC)"; \
 		echo ""; \
-		echo "$(BLUE)In $(AGENTS_DIR)/:$(NC)"; \
+		echo "$(BLUE)Available agents:$(NC)"; \
 		ls -1 $(AGENTS_DIR) 2>/dev/null | sed 's/^/  - /' || echo "  None found"; \
-		echo ""; \
-		echo "$(BLUE)In $(GENERATED_AGENTS_DIR)/:$(NC)"; \
-		ls -1 $(GENERATED_AGENTS_DIR) 2>/dev/null | sed 's/^/  - /' || echo "  None found"; \
 		echo ""; \
 		echo "$(YELLOW)Usage: make deploy-agent AGENT=<agent-name>$(NC)"; \
 	else \
 		echo "$(YELLOW)🚀 Deploying agent: $(AGENT)$(NC)"; \
 		if [ -d "$(AGENTS_DIR)/$(AGENT)" ]; then \
 			cd $(AGENTS_DIR)/$(AGENT) && ./scripts/deploy.sh; \
-		elif [ -d "$(GENERATED_AGENTS_DIR)/$(AGENT)" ]; then \
-			cd $(GENERATED_AGENTS_DIR)/$(AGENT) && ./scripts/deploy.sh; \
 		else \
-			echo "$(RED)Error: Agent '$(AGENT)' not found in $(AGENTS_DIR)/ or $(GENERATED_AGENTS_DIR)/$(NC)"; \
+			echo "$(RED)Error: Agent '$(AGENT)' not found in $(AGENTS_DIR)/$(NC)"; \
 			exit 1; \
 		fi; \
 	fi
@@ -236,7 +230,7 @@ deploy-all: ## Deploy all agents (use with caution!)
 	@echo "$(RED)Warning: This will deploy all agents. Continue? [y/N]$(NC)"
 	@read -p "" confirm; \
 	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
-		for agent in $(AGENTS_DIR)/*/scripts/deploy.sh $(GENERATED_AGENTS_DIR)/*/scripts/deploy.sh; do \
+		for agent in $(AGENTS_DIR)/*/scripts/deploy.sh; do \
 			if [ -f "$$agent" ]; then \
 				echo "$(BLUE)Deploying $$(dirname $$(dirname $$agent))...$(NC)"; \
 				cd $$(dirname $$(dirname $$agent)) && ./scripts/deploy.sh; \
@@ -270,8 +264,7 @@ info: ## Show project information
 	@echo "  $(BLUE)generators/$(NC)"
 	@echo "    ├── $(GREEN)python/$(NC)      - Python agent generator"
 	@echo "    └── $(GREEN)javascript/$(NC) - JavaScript agent generator"
-	@echo "  $(BLUE)agents/$(NC)          - Pre-built agents"
-	@echo "  $(BLUE)generated-agents/$(NC) - Generated agents output"
+	@echo "  $(BLUE)agents/$(NC)          - All agents (hand-crafted and generated)"
 	@echo ""
 	@echo "$(WHITE)Key Commands:$(NC)"
 	@echo "  • $(CYAN)make generate-agent$(NC) - Create a new agent"

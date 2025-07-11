@@ -1,8 +1,8 @@
-name: Deploy Generated Agents
+name: Deploy Agents
 
 on:
   pull_request:
-    paths: ['generated-agents/**']
+    paths: ['agents/**']
     types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
@@ -35,7 +35,7 @@ jobs:
           set -e
           
           # Find all agent directories with metadata files
-          find generated-agents -name ".agent-metadata.json" -type f > all_agents.txt
+          find agents -name ".agent-metadata.json" -type f > all_agents.txt
           
           if [ "${{ github.event.inputs.force_deploy }}" = "true" ]; then
             # Force deploy mode - deploy all agents
@@ -52,15 +52,15 @@ jobs:
               base_sha="HEAD~1"
             fi
             
-            # Get changed files in generated-agents/
-            git diff --name-only "$base_sha" HEAD -- generated-agents/ > changed_files.txt
+            # Get changed files in agents/
+            git diff --name-only "$base_sha" HEAD -- agents/ > changed_files.txt
             
             # Extract unique agent directories from changed files
             agents=$(cat changed_files.txt | while read file; do
-              if [[ "$file" =~ ^generated-agents/(router-agents|specialist-agents)/([^/]+)/ ]]; then
-                agent_dir="generated-agents/${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
-                # Only include if metadata file exists
-                if [ -f "$agent_dir/.agent-metadata.json" ]; then
+              if [[ "$file" =~ ^agents/([^/]+)/ ]]; then
+                agent_dir="agents/${BASH_REMATCH[1]}"
+                # Only include if it's a valid agent directory with scripts/deploy.sh
+                if [ -f "$agent_dir/scripts/deploy.sh" ]; then
                   echo "\"$agent_dir\""
                 fi
               fi
@@ -109,15 +109,26 @@ jobs:
       - name: Install Wrangler
         run: npm install -g wrangler@latest
 
-      - name: Validate agent metadata
+      - name: Validate agent structure
         run: |
           agent_dir="${{ matrix.agent }}"
-          metadata_file="$agent_dir/.agent-metadata.json"
           
           echo "Validating $agent_dir"
           
-          # Check required files exist
-          required_files=("src/entry.py" "wrangler.toml" ".agent-metadata.json")
+          # Check required files exist (agents may be Python or JavaScript)
+          if [ -f "$agent_dir/src/entry.py" ]; then
+            # Python agent
+            required_files=("src/entry.py" "wrangler.toml" "scripts/deploy.sh")
+            echo "Detected Python agent"
+          elif [ -f "$agent_dir/src/index.js" ]; then
+            # JavaScript agent
+            required_files=("src/index.js" "wrangler.toml" "scripts/deploy.sh")
+            echo "Detected JavaScript agent"
+          else
+            echo "❌ No valid entry point found (src/entry.py or src/index.js)"
+            exit 1
+          fi
+          
           for file in "${required_files[@]}"; do
             if [ ! -f "$agent_dir/$file" ]; then
               echo "❌ Missing required file: $agent_dir/$file"
@@ -125,29 +136,21 @@ jobs:
             fi
           done
           
-          # Validate JSON metadata
-          if ! jq empty "$metadata_file" 2>/dev/null; then
-            echo "❌ Invalid JSON in metadata file: $metadata_file"
-            exit 1
-          fi
-          
-          # Check required metadata fields
-          required_fields=("generatedAt" "workerName" "domain" "type" "language" "accountId" "zoneId")
-          for field in "${required_fields[@]}"; do
-            if ! jq -e ".$field" "$metadata_file" >/dev/null; then
-              echo "❌ Missing required metadata field: $field"
-              exit 1
-            fi
-          done
-          
-          echo "✅ Agent validation passed"
+          echo "✅ Agent structure validation passed"
 
-      - name: Validate Python syntax
+      - name: Validate syntax
         run: |
           agent_dir="${{ matrix.agent }}"
-          echo "Checking Python syntax for $agent_dir/src/entry.py"
-          uv run python -m py_compile "$agent_dir/src/entry.py"
-          echo "✅ Python syntax validation passed"
+          
+          if [ -f "$agent_dir/src/entry.py" ]; then
+            echo "Checking Python syntax for $agent_dir/src/entry.py"
+            uv run python -m py_compile "$agent_dir/src/entry.py"
+            echo "✅ Python syntax validation passed"
+          elif [ -f "$agent_dir/src/index.js" ]; then
+            echo "Checking JavaScript syntax for $agent_dir/src/index.js"
+            node -c "$agent_dir/src/index.js"
+            echo "✅ JavaScript syntax validation passed"
+          fi
 
       - name: Validate Wrangler configuration
         run: |
@@ -208,26 +211,22 @@ jobs:
           
           echo "Deploying agent from $agent_dir"
           
-          # Extract worker name from metadata
-          worker_name=$(jq -r '.workerName' .agent-metadata.json)
-          echo "Worker name: $worker_name"
+          # Use the deploy script
+          chmod +x scripts/deploy.sh
+          ./scripts/deploy.sh
           
-          # Deploy using wrangler
-          npx wrangler deploy
-          
-          echo "✅ Successfully deployed $worker_name"
+          echo "✅ Successfully deployed agent"
 
       - name: Update deployment status
         if: always()
         run: |
           agent_dir="${{ matrix.agent }}"
-          worker_name=$(jq -r '.workerName' "$agent_dir/.agent-metadata.json")
-          domain=$(jq -r '.domain' "$agent_dir/.agent-metadata.json")
+          agent_name=$(basename "$agent_dir")
           
           if [ "${{ job.status }}" = "success" ]; then
-            echo "✅ $worker_name deployed successfully to https://$domain"
+            echo "✅ Agent $agent_name deployed successfully"
           else
-            echo "❌ $worker_name deployment failed"
+            echo "❌ Agent $agent_name deployment failed"
           fi
 
   notify-completion:

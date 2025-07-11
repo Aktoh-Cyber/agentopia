@@ -88,6 +88,11 @@ METADATA=$(cat <<EOF
       "type": "plain_text",
       "name": "TEMPERATURE",
       "text": "0.3"
+    },
+    {
+      "type": "plain_text",
+      "name": "JUDGE_URL",
+      "text": "https://judge.mindhive.tech"
     }
   ]
 }

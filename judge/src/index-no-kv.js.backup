@@ -39,18 +39,6 @@ export default {
           });
         }
 
-        // Check cache first
-        const cacheKey = `q:${question.toLowerCase().trim()}`;
-        const cached = await env.CACHE?.get(cacheKey);
-        if (cached) {
-          return new Response(JSON.stringify({ answer: cached, cached: true }), {
-            headers: {
-              'Content-Type': 'application/json',
-              ...corsHeaders,
-            },
-          });
-        }
-
         // Prepare the prompt with cybersecurity context
         const systemPrompt = `You are a cybersecurity expert assistant. Answer questions about information security, network security, cryptography, incident response, and security best practices. 
         Be concise but informative. If a question is not related to cybersecurity, politely redirect the conversation back to security topics.
@@ -69,11 +57,6 @@ export default {
         });
 
         const answer = response.response || 'I apologize, but I could not generate a response. Please try again.';
-
-        // Cache the response for 1 hour
-        if (env.CACHE) {
-          await env.CACHE.put(cacheKey, answer, { expirationTtl: 3600 });
-        }
 
         return new Response(JSON.stringify({ answer, cached: false }), {
           headers: {

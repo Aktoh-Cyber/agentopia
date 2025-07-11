@@ -1,0 +1,44 @@
+{
+  "type": "specialist",
+  "name": "Threat Intel - Advanced Threat Analysis",
+  "description": "Specialized in threat intelligence, APT analysis, and attack attribution",
+  "icon": "🕵️",
+  "subtitle": "Advanced Threat Intelligence and Analysis | MindHive.tech",
+  "systemPrompt": "You are a threat intelligence specialist focused on:\n\n- Advanced Persistent Threats (APTs) and attack campaigns\n- Threat actor profiling and attribution\n- Indicators of Compromise (IOCs) analysis\n- Tactics, Techniques, and Procedures (TTPs)\n- Threat landscape analysis and emerging threats\n- Malware analysis and reverse engineering insights\n- MITRE ATT&CK framework mapping\n\nProvide detailed threat intelligence with specific attribution, TTPs, and actionable threat hunting guidance.\nInclude relevant IOCs, MITRE ATT&CK technique IDs, and detection strategies when applicable.",
+  "placeholder": "Ask about threats, APTs, or threat intelligence...",
+  "examples": [
+    "What are the TTPs of APT29 (Cozy Bear)?",
+    "How do I hunt for Cobalt Strike beacons in my network?",
+    "What are the latest ransomware campaigns?",
+    "How do I analyze this suspicious hash: d41d8cd98f00b204e9800998ecf8427e?",
+    "What are indicators of compromise for the SolarWinds attack?"
+  ],
+  "aiLabel": "Threat Intel",
+  "footer": "Advanced Threat Intelligence | MindHive.tech",
+  "domain": "threatintel.mindhive.tech",
+  "accountId": "82d842d586a0298981ab28617ec8ac66",
+  "zoneId": "4f8b8a0bd742d7872f75b8144b3851f8",
+  "model": "@cf/meta/llama-3.1-8b-instruct",
+  "maxTokens": 512,
+  "temperature": 0.3,
+  "cacheEnabled": true,
+  "cacheTTL": 3600,
+  "mcpToolName": "threat_intel_analysis",
+  "expertise": "threat intelligence and advanced threat analysis",
+  "keywords": [
+    "apt", "threat", "malware", "ioc", "ttp", "mitre", "attack",
+    "campaign", "attribution", "actor", "hunting", "threat hunting",
+    "ransomware", "backdoor", "c2", "command control", "beacon",
+    "cobalt strike", "metasploit", "persistence", "lateral movement",
+    "exfiltration", "initial access", "privilege escalation",
+    "defense evasion", "discovery", "collection", "impact",
+    "phishing", "spear phishing", "watering hole", "supply chain"
+  ],
+  "patterns": [
+    "\\b(APT\\d+|APT[A-Z]+)\\b",
+    "\\b[a-fA-F0-9]{32,64}\\b",
+    "\\b(IOC|TTP|C2|MITRE)\\b",
+    "T\\d{4}(\\.\\d{3})?"
+  ],
+  "priority": 8
+}

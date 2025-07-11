@@ -1,0 +1,13 @@
+# Python Agent Framework Requirements
+# Note: For Cloudflare Workers, only standard library can be deployed to production
+# These packages work in local development only
+
+# Template generation
+cookiecutter>=2.6.0
+jinja2>=3.1.0
+pyyaml>=6.0.0
+
+# Development tools
+black>=23.0.0
+isort>=5.12.0
+mypy>=1.0.0

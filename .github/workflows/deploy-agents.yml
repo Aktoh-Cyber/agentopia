@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       force_deploy:
-        description: 'Force deploy all agents'
+        description: 'Force deploy all agents (excludes test agents)'
         required: false
         default: false
         type: boolean
@@ -38,10 +38,14 @@ jobs:
           find agents -name ".agent-metadata.json" -type f > all_agents.txt
           
           if [ "${{ github.event.inputs.force_deploy }}" = "true" ]; then
-            # Force deploy mode - deploy all agents
-            agents=$(cat all_agents.txt | while read metadata_file; do
-              agent_dir=$(dirname "$metadata_file")
-              echo "\"$agent_dir\""
+            # Force deploy mode - deploy all agents except test agents
+            agents=$(find agents -name "scripts/deploy.sh" -type f | while read deploy_script; do
+              agent_dir=$(dirname "$(dirname "$deploy_script")")
+              agent_name=$(basename "$agent_dir")
+              # Exclude test agents
+              if [[ ! "$agent_name" =~ test ]]; then
+                echo "\"$agent_dir\""
+              fi
             done | jq -s '.')
             echo "has_changes=true" >> $GITHUB_OUTPUT
           else
@@ -58,9 +62,11 @@ jobs:
             # Extract unique agent directories from changed files
             agents=$(cat changed_files.txt | while read file; do
               if [[ "$file" =~ ^agents/([^/]+)/ ]]; then
-                agent_dir="agents/${BASH_REMATCH[1]}"
+                agent_name="${BASH_REMATCH[1]}"
+                agent_dir="agents/$agent_name"
                 # Only include if it's a valid agent directory with scripts/deploy.sh
-                if [ -f "$agent_dir/scripts/deploy.sh" ]; then
+                # and exclude test agents (containing "test" in the name)
+                if [ -f "$agent_dir/scripts/deploy.sh" ] && [[ ! "$agent_name" =~ test ]]; then
                   echo "\"$agent_dir\""
                 fi
               fi

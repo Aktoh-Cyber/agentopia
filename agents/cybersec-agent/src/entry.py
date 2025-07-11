@@ -1,5 +1,5 @@
 # Auto-generated router agent
-# Generated from configuration at 2025-07-11T00:27:22.503646
+# Generated from configuration at 2025-07-11T13:32:41.697288
 
 from agent_framework import RouterAgent
 

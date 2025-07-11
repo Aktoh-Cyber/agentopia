@@ -1,79 +1,45 @@
 #!/bin/bash
 
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${YELLOW}Judge - Vulnerability & Compliance Expert Deployment${NC}"
+echo "================================================"
+
 # Check if CLOUDFLARE_API_TOKEN is set
 if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
-    echo "CLOUDFLARE_API_TOKEN environment variable is required"
-    echo "Please create a token at: https://dash.cloudflare.com/profile/api-tokens"
-    echo "The token needs these permissions:"
-    echo "  - Account: Cloudflare Workers Scripts:Edit"
-    echo "  - Zone: Workers Routes:Edit (for mindhive.tech)"
+    echo -e "${RED}ERROR: CLOUDFLARE_API_TOKEN environment variable is required${NC}"
     exit 1
 fi
 
 ACCOUNT_ID="82d842d586a0298981ab28617ec8ac66"
-SCRIPT_NAME="cybersec-agent"
+SCRIPT_NAME="judge-py"
 ZONE_ID="4f8b8a0bd742d7872f75b8144b3851f8"
 
-# Read the worker code
-WORKER_CODE=$(cat src/index.js)
+echo -e "\n${YELLOW}Deploying Python Worker to Cloudflare...${NC}"
 
-# Create metadata
-METADATA=$(cat <<EOF
-{
-  "main_module": "index.js",
-  "compatibility_date": "2024-01-01",
-  "bindings": [
-    {
-      "type": "ai",
-      "name": "AI"
-    },
-    {
-      "type": "kv_namespace",
-      "name": "CACHE",
-      "namespace_id": "94f2859d6efd4fc8830887d5d797324a"
-    },
-    {
-      "type": "plain_text",
-      "name": "MAX_TOKENS",
-      "text": "512"
-    },
-    {
-      "type": "plain_text",
-      "name": "TEMPERATURE",
-      "text": "0.3"
-    }
-  ]
-}
-EOF
-)
+if command -v wrangler &> /dev/null; then
+    npx wrangler@latest deploy
 
-echo "Deploying Worker to Cloudflare..."
-
-# Upload the worker
-curl -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/scripts/$SCRIPT_NAME" \
-  -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-  -F "metadata=$METADATA;type=application/json" \
-  -F "index.js=@src/index.js;type=application/javascript+module"
-
-echo ""
-echo "Creating route for cybersec.mindhive.tech..."
-
-# Create the route
-ROUTE_DATA=$(cat <<EOF
-{
-  "pattern": "cybersec.mindhive.tech/*",
-  "script": "$SCRIPT_NAME"
-}
-EOF
-)
-
-curl -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/workers/routes" \
-  -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "$ROUTE_DATA"
-
-echo ""
-echo "Deployment complete!"
-echo ""
-echo "Your cybersecurity AI assistant is now available at:"
-echo "https://cybersec.mindhive.tech"
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✓ Python Worker deployed successfully${NC}"
+        echo ""
+        echo "Your Python agent is now available at:"
+        echo -e "${YELLOW}https://judge-py.mindhive.tech${NC}"
+        echo ""
+        echo "🐍 Python Workers Features:"
+        echo "• Standard library support in production"
+        echo "• Cloudflare AI and KV bindings"
+        echo "• MCP server interface"
+        echo "• Fast cold starts with Pyodide"
+    else
+        echo -e "${RED}✗ Failed to deploy Worker${NC}"
+        exit 1
+    fi
+else
+    echo -e "${RED}Wrangler not found. Please install: npm install -g wrangler${NC}"
+    exit 1
+fi

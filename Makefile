@@ -163,6 +163,10 @@ generate-python: ## Generate a Python agent (CONFIG=path/to/config.json OUTPUT=a
 		mkdir -p $(AGENTS_DIR); \
 		cd $(PYTHON_GEN_DIR) && $(PYTHON) agent_builder.py $(CONFIG) ../../$(AGENTS_DIR)/$(OUTPUT); \
 		echo "$(GREEN)✅ Python agent generated at: $(AGENTS_DIR)/$(OUTPUT)$(NC)"; \
+		if echo "$(OUTPUT)" | grep -q "test"; then \
+			echo "$(YELLOW)🧹 Test agent detected - will auto-cleanup after 10 seconds...$(NC)"; \
+			(sleep 10 && rm -rf $(AGENTS_DIR)/$(OUTPUT) && echo "$(BLUE)🗑️  Cleaned up test agent: $(OUTPUT)$(NC)" || true) & \
+		fi; \
 	fi
 
 generate-javascript: ## Generate a JavaScript agent (CONFIG=path/to/config.json OUTPUT=agent-name)
@@ -178,6 +182,10 @@ generate-javascript: ## Generate a JavaScript agent (CONFIG=path/to/config.json 
 		mkdir -p $(AGENTS_DIR); \
 		cd $(JS_GEN_DIR) && $(NODE) build-agent.js $(CONFIG) ../../$(AGENTS_DIR)/$(OUTPUT); \
 		echo "$(GREEN)✅ JavaScript agent generated at: $(AGENTS_DIR)/$(OUTPUT)$(NC)"; \
+		if echo "$(OUTPUT)" | grep -q "test"; then \
+			echo "$(YELLOW)🧹 Test agent detected - will auto-cleanup after 10 seconds...$(NC)"; \
+			(sleep 10 && rm -rf $(AGENTS_DIR)/$(OUTPUT) && echo "$(BLUE)🗑️  Cleaned up test agent: $(OUTPUT)$(NC)" || true) & \
+		fi; \
 	fi
 
 # Quick generation shortcuts
@@ -204,6 +212,26 @@ list-configs: ## List all available agent configurations
 	@echo ""
 	@echo "$(BLUE)JavaScript configs:$(NC)"
 	@ls -1 $(JS_GEN_DIR)/configs/*.json 2>/dev/null | sed 's/.*\//  - /' || echo "  None found"
+
+test-agent-generation: ## Test agent generation (auto-cleanup)
+	@echo "$(YELLOW)🧪 Testing Agent Generation$(NC)"
+	@echo ""
+	@read -p "Select language (python/javascript): " lang; \
+	read -p "Config file path: " config; \
+	timestamp=$$(date +%s); \
+	test_name="test-agent-$$timestamp"; \
+	echo ""; \
+	echo "$(BLUE)Generating test agent: $$test_name$(NC)"; \
+	if [ "$$lang" = "python" ]; then \
+		$(MAKE) generate-python CONFIG=$$config OUTPUT=$$test_name; \
+	elif [ "$$lang" = "javascript" ]; then \
+		$(MAKE) generate-javascript CONFIG=$$config OUTPUT=$$test_name; \
+	else \
+		echo "$(RED)Invalid language. Use 'python' or 'javascript'$(NC)"; \
+		exit 1; \
+	fi; \
+	echo ""; \
+	echo "$(GREEN)✅ Test completed. Agent will auto-cleanup in 10 seconds.$(NC)"
 
 ##@ Agent Deployment
 

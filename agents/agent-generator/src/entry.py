@@ -34,7 +34,7 @@ Generate complete agent configurations and commit them to the repository for aut
     'model': '@cf/meta/llama-3.1-8b-instruct',
     'maxTokens': 1024,
     'temperature': 0.2,
-    'cacheEnabled': true,
+    'cacheEnabled': True,
     'cacheTTL': 1800,
     'mcpToolName': 'agent_generator',
     'expertise': 'agent generation and GitOps deployment',

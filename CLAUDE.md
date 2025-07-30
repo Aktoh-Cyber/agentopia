@@ -32,7 +32,7 @@ generators/
     └── agent_builder.py
 ```
 
-**Key Constraint**: Python production deployments can only use standard library due to Cloudflare Workers limitations. Third-party packages work in development only.
+**Key Constraint**: Python production deployments use Pyodide runtime. Third-party packages are supported via Pywrangler bundling, but must be WebAssembly-compatible. For maximum compatibility, this framework uses standard library only.
 
 ## Common Development Commands
 
@@ -114,9 +114,11 @@ All agents automatically expose MCP endpoints:
 
 ### Python Implementation  
 - Uses FFI imports for JavaScript API access: `from js import console, fetch`
-- **Production limitation**: Only standard library packages work
+- **Package support**: Third-party packages supported via Pywrangler (must be WebAssembly-compatible)
+- **Framework design**: Uses standard library only for maximum compatibility and performance
 - Type hints and async/await throughout
 - Pyodide-based execution environment
+- **LangChain-style interface**: Provides familiar LangChain abstractions using only standard library
 
 ## Template Generation Architecture
 
@@ -140,6 +142,41 @@ Both implementations use direct file templating rather than complex template eng
 - Cold start optimization for both JavaScript and Python
 - Python uses Pyodide snapshots for faster execution
 - KV namespace binding for distributed caching
+
+## Python LangChain-Style Interface
+
+The Python implementation provides a familiar LangChain-style API while respecting Cloudflare Workers' standard library constraints:
+
+### Available Components
+- **Message Types**: `SystemMessage`, `HumanMessage`, `AIMessage`
+- **Prompt Templates**: `PromptTemplate`, `ChatPromptTemplate`
+- **Chains**: `LLMChain`, `SimpleSequentialChain`, custom `RouterChain`
+- **Memory**: `ConversationBufferMemory` for conversation history
+- **Output Parsers**: `StrOutputParser`, `JsonOutputParser`
+- **LLM Interface**: `CloudflareWorkersLLM` wrapping Cloudflare AI
+
+### Usage Example
+```python
+# Agents automatically use LangChain-style by default
+agent = BaseAgent(config)
+
+# Or explicitly control:
+config["useLangchain"] = True  # Enable (default)
+config["useLangchain"] = False  # Use legacy interface
+
+# Custom chains and prompts work naturally
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful assistant"),
+    ("human", "{question}")
+])
+```
+
+### Benefits
+- Familiar API for LangChain developers
+- Smooth migration path for existing code patterns
+- Type-safe abstractions
+- Zero external dependencies (production-ready)
+- Automatic fallback to legacy mode if imports fail
 
 ## Code Reduction Benefits
 

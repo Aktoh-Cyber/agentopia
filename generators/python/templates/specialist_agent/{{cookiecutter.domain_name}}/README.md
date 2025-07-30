@@ -30,14 +30,15 @@ This Python agent was generated from configuration with the following settings:
 
 ✅ **Production Support:**
 - Python Standard Library
+- Third-party packages (via Pywrangler bundling)
 - Cloudflare AI binding
 - KV/R2/D1 bindings
 - Environment variables
 - Fast cold starts
 
-⚠️ **Development Only:**
-- Third-party packages (FastAPI, etc.)
-- Full pip ecosystem
+⚠️ **Package Requirements:**
+- Third-party packages must be WebAssembly-compatible
+- This framework uses standard library for maximum compatibility
 
 ## API Usage
 
@@ -130,7 +131,7 @@ src/
 
 ### Key Features
 
-1. **Native Python**: Uses Python standard library only for production deployment
+1. **Native Python**: Uses Python standard library for maximum compatibility (third-party packages supported via Pywrangler)
 2. **FFI Integration**: Seamless access to JavaScript APIs via Pyodide FFI
 3. **Type Safety**: Full typing support with mypy compatibility
 4. **Async Support**: Built on async/await for optimal performance

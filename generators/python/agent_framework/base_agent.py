@@ -1,10 +1,11 @@
 """
 Base Agent Class - Common functionality for all Python agents
+Now includes LangChain-style interface for familiar development patterns
 Designed to work with Cloudflare Workers Python runtime
 """
 
 import json
-from typing import Any, Optional
+from typing import Any, Optional, List, Dict
 from urllib.parse import urlparse
 
 # For accessing JavaScript APIs via FFI
@@ -14,9 +15,60 @@ from pyodide.ffi import to_js
 # Import Workers-specific modules
 from workers import Response
 
+# Import our LangChain-compatible interfaces
+try:
+    from .langchain_compat import (
+        BaseMessage, SystemMessage, HumanMessage, AIMessage,
+        ChatPromptTemplate, PromptTemplate,
+        BaseLLM, LLMChain,
+        ConversationBufferMemory,
+        StrOutputParser, JsonOutputParser
+    )
+    LANGCHAIN_COMPAT_AVAILABLE = True
+except ImportError:
+    LANGCHAIN_COMPAT_AVAILABLE = False
+
+
+class CloudflareWorkersLLM(BaseLLM if LANGCHAIN_COMPAT_AVAILABLE else object):
+    """LLM implementation for Cloudflare Workers"""
+    
+    def __init__(self, env, model: str, temperature: float = 0.3, max_tokens: int = 512):
+        self.env = env
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+    
+    async def agenerate(self, messages: List[BaseMessage], **kwargs: Any) -> str:
+        """Generate response using Cloudflare AI"""
+        try:
+            # Convert messages to format expected by Cloudflare AI
+            cf_messages = []
+            for msg in messages:
+                cf_messages.append({
+                    "role": msg.role,
+                    "content": msg.content
+                })
+            
+            # Convert to JavaScript format
+            js_messages = to_js(cf_messages)
+            ai_params = to_js({
+                "messages": js_messages,
+                "max_tokens": kwargs.get("max_tokens", self.max_tokens),
+                "temperature": kwargs.get("temperature", self.temperature),
+            })
+            
+            response = await self.env.AI.run(self.model, ai_params)
+            return (
+                response.response
+                or "I apologize, but I could not generate a response. Please try again."
+            )
+        except Exception as e:
+            console.error(f"AI call error: {e}")
+            return "I apologize, but I encountered an error. Please try again."
+
 
 class BaseAgent:
-    """Base class providing common functionality for all agents"""
+    """Base class providing common functionality for all agents with optional LangChain-style interface"""
 
     def __init__(self, config: dict[str, Any]):
         self.config = {
@@ -37,8 +89,45 @@ class BaseAgent:
             "mcp_tool_name": config.get(
                 "mcpToolName", f"{config.get('name', 'agent').lower().replace(' ', '_')}_tool"
             ),
+            "use_langchain": config.get("useLangchain", True),  # Enable LangChain by default
             **config,
         }
+        
+        # Initialize LangChain-style components if available and enabled
+        if LANGCHAIN_COMPAT_AVAILABLE and self.config["use_langchain"]:
+            self.memory = ConversationBufferMemory(return_messages=True)
+            self.output_parser = StrOutputParser()
+            self.llm: Optional[CloudflareWorkersLLM] = None
+            self.chain: Optional[LLMChain] = None
+            self.prompt_template: Optional[ChatPromptTemplate] = None
+        else:
+            self.memory = None
+            self.output_parser = None
+            self.llm = None
+            self.chain = None
+            self.prompt_template = None
+    
+    def setup_langchain_components(self, env):
+        """Initialize LangChain components with environment"""
+        if not LANGCHAIN_COMPAT_AVAILABLE or not self.config["use_langchain"]:
+            return
+        
+        # Initialize LLM
+        self.llm = CloudflareWorkersLLM(
+            env=env,
+            model=self.config["model"],
+            temperature=self.config["temperature"],
+            max_tokens=self.config["max_tokens"]
+        )
+        
+        # Create prompt template
+        self.prompt_template = ChatPromptTemplate.from_messages([
+            ("system", self.config["system_prompt"]),
+            ("human", "{question}")
+        ])
+        
+        # Create chain
+        self.chain = LLMChain(llm=self.llm, prompt=self.prompt_template)
 
     def get_cors_headers(self) -> dict[str, str]:
         """Standard CORS headers"""
@@ -72,7 +161,7 @@ class BaseAgent:
             console.error(f"Cache put error: {e}")
 
     async def call_ai(self, env, question: str) -> str:
-        """Call AI model with system prompt"""
+        """Call AI model with system prompt (legacy method)"""
         try:
             # Convert Python data to JavaScript format for the AI call
             messages = to_js(
@@ -99,8 +188,44 @@ class BaseAgent:
             console.error(f"AI call error: {e}")
             return "I apologize, but I encountered an error. Please try again."
 
-    async def process_question(self, env, question: str) -> dict[str, Any]:
-        """Process a question (override in specialized agents)"""
+    async def process_question_langchain(self, env, question: str) -> dict[str, Any]:
+        """Process a question using LangChain-style components"""
+        # Initialize components if not already done
+        if self.llm is None:
+            self.setup_langchain_components(env)
+        
+        # Check cache first
+        cache_key = f"q:{question.lower().strip()}"
+        cached = await self.get_from_cache(env, cache_key)
+        
+        if cached:
+            return {"answer": cached, "cached": True}
+        
+        # Add to memory
+        self.memory.add_user_message(question)
+        
+        # Run chain
+        try:
+            answer = await self.chain.arun(question=question)
+            
+            # Parse output if needed
+            parsed_answer = self.output_parser.parse(answer)
+            
+            # Add AI response to memory
+            self.memory.add_ai_message(parsed_answer)
+            
+            # Cache the response
+            await self.put_in_cache(env, cache_key, parsed_answer)
+            
+            return {"answer": parsed_answer, "cached": False}
+        except Exception as e:
+            console.error(f"Error processing question: {e}")
+            error_msg = "I apologize, but I encountered an error processing your question."
+            self.memory.add_ai_message(error_msg)
+            return {"answer": error_msg, "cached": False}
+
+    async def process_question_legacy(self, env, question: str) -> dict[str, Any]:
+        """Process a question (legacy method)"""
         # Check cache first
         cache_key = f"q:{question.lower().strip()}"
         cached = await self.get_from_cache(env, cache_key)
@@ -115,6 +240,13 @@ class BaseAgent:
         await self.put_in_cache(env, cache_key, answer)
 
         return {"answer": answer, "cached": False}
+
+    async def process_question(self, env, question: str) -> dict[str, Any]:
+        """Process a question (uses LangChain style if available and enabled)"""
+        if LANGCHAIN_COMPAT_AVAILABLE and self.config["use_langchain"]:
+            return await self.process_question_langchain(env, question)
+        else:
+            return await self.process_question_legacy(env, question)
 
     def handle_mcp_tools_list(self) -> dict[str, Any]:
         """Handle MCP tools/list request"""

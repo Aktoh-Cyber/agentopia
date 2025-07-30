@@ -40,11 +40,11 @@ generators/
 ```bash
 # JavaScript agent
 cd generators/javascript
-node build-agent.js configs/cybersec-router.json ../../output-dir
+node build-agent.js configs/infosec-router.json ../../output-dir
 
 # Python agent  
 cd generators/python
-python3 agent_builder.py configs/cybersec-router.json ../../output-dir
+python3 agent_builder.py configs/infosec-router.json ../../output-dir
 ```
 
 ### Development and Deployment

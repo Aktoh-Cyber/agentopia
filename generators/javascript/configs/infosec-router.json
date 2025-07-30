@@ -1,11 +1,11 @@
 {
   "type": "router",
-  "name": "Cybersecurity AI Assistant",
-  "description": "Python-powered AI assistant for cybersecurity questions with specialized agent routing",
+  "name": "Information Security AI Assistant",
+  "description": "AI assistant for information security questions with specialized agent routing",
   "icon": "🛡️",
-  "subtitle": "Powered by MindHive.tech | Python Edition 🐍",
-  "systemPrompt": "You are a cybersecurity expert assistant. Answer questions about information security, network security, cryptography, incident response, and security best practices.\n\nBe concise but informative. If a question is not related to cybersecurity, politely redirect the conversation back to security topics.\n\nFocus on practical, actionable advice that follows industry standards and best practices.",
-  "placeholder": "Ask a cybersecurity question...",
+  "subtitle": "Powered by MindHive.tech",
+  "systemPrompt": "You are an information security expert assistant. Answer questions about information security, network security, cryptography, incident response, and security best practices.\n\nBe concise but informative. If a question is not related to information security, politely redirect the conversation back to security topics.\n\nFocus on practical, actionable advice that follows industry standards and best practices.",
+  "placeholder": "Ask an information security question...",
   "examples": [
     "What are the OWASP Top 10 vulnerabilities?",
     "How can I secure my home network?",
@@ -13,9 +13,9 @@
     "How do I respond to a ransomware attack?",
     "What are best practices for password management?"
   ],
-  "aiLabel": "CyberSec AI",
-  "footer": "Built with Cloudflare Workers AI & Python | MindHive.tech",
-  "domain": "cybersec-py.mindhive.tech",
+  "aiLabel": "InfoSec AI",
+  "footer": "Built with Cloudflare Workers AI | MindHive.tech",
+  "domain": "infosec.mindhive.tech",
   "accountId": "82d842d586a0298981ab28617ec8ac66",
   "zoneId": "4f8b8a0bd742d7872f75b8144b3851f8",
   "model": "@cf/meta/llama-3.1-8b-instruct",
@@ -26,10 +26,10 @@
   "registry": {
     "tools": [
       {
-        "id": "judge-py",
-        "name": "Judge - Vulnerability & Compliance Expert (Python)",
-        "description": "Python-powered specialist in CVE analysis, compliance frameworks, and security assessments",
-        "endpoint": "https://judge-py.mindhive.tech",
+        "id": "judge",
+        "name": "Judge - Vulnerability & Compliance Expert",
+        "description": "Specialized in CVE analysis, compliance frameworks, and security assessments",
+        "endpoint": "https://judge.mindhive.tech",
         "mcpTool": "judge_vulnerability_compliance",
         "keywords": [
           "cve", "vulnerability", "vulnerabilities", "exploit", "patch",

@@ -1,0 +1,20 @@
+name = "infosec"
+main = "src/entry.py"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["python_workers"]
+account_id = "82d842d586a0298981ab28617ec8ac66"
+
+[ai]
+binding = "AI"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "94f2859d6efd4fc8830887d5d797324a"
+
+[vars]
+MAX_TOKENS = "1024"
+TEMPERATURE = "0.4"
+
+[[routes]]
+pattern = "infosec.mindhive.tech/*"
+zone_id = "4f8b8a0bd742d7872f75b8144b3851f8"

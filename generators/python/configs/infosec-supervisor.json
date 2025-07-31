@@ -1,0 +1,92 @@
+{
+  "type": "supervisor",
+  "pattern": "supervisor",
+  "name": "Information Security AI Assistant",
+  "description": "Advanced information security AI with specialized agent coordination using LangGraph Supervisor pattern",
+  "icon": "🛡️",
+  "subtitle": "LangGraph Supervisor | Powered by MindHive.tech",
+  "systemPrompt": "You are an information security supervisor agent that coordinates four specialized security experts. Analyze incoming questions and intelligently route them to the most appropriate specialist based on the topic, complexity, and required expertise.\n\nYour specialists include:\n- Judge: Vulnerability assessment and compliance frameworks\n- Lancer: Red teaming, penetration testing, and offensive security\n- Scout: Network, endpoint, resource, and application discovery and fingerprinting\n- Shield: Blue teaming, incident response, and active defense\n\nMake intelligent routing decisions and coordinate responses for comprehensive security guidance.",
+  "placeholder": "Ask any information security question...",
+  "examples": [
+    "What are the OWASP Top 10 vulnerabilities?",
+    "How do I perform reconnaissance on a target network?",
+    "What tools should I use for network discovery?",
+    "How do I respond to a ransomware attack?",
+    "What are the SOC 2 compliance requirements?"
+  ],
+  "aiLabel": "InfoSec Supervisor",
+  "footer": "Built with LangGraph and Cloudflare Workers AI | MindHive.tech",
+  "domain": "infosec.mindhive.tech",
+  "accountId": "82d842d586a0298981ab28617ec8ac66",
+  "zoneId": "4f8b8a0bd742d7872f75b8144b3851f8",
+  "model": "@cf/meta/llama-3.1-8b-instruct",
+  "maxTokens": 1024,
+  "temperature": 0.4,
+  "maxIterations": 8,
+  "cacheEnabled": true,
+  "cacheTTL": 3600,
+  "useLangchain": true,
+  "agents": [
+    {
+      "name": "judge",
+      "expertise": "Vulnerability assessment, CVE analysis, compliance frameworks (SOC 2, GDPR, HIPAA, PCI-DSS, ISO 27001, NIST), security auditing, and regulatory requirements",
+      "description": "Expert in vulnerability scoring, compliance requirements, and security assessment methodologies",
+      "specializes_in": [
+        "CVE analysis and CVSS scoring",
+        "Compliance frameworks and auditing", 
+        "Vulnerability scanning and assessment",
+        "Security controls and requirements",
+        "Risk assessment and gap analysis"
+      ]
+    },
+    {
+      "name": "lancer",
+      "expertise": "Red teaming, penetration testing, exploit development, social engineering, privilege escalation, and offensive security techniques",
+      "description": "Specialist in offensive security, ethical hacking, and penetration testing methodologies",
+      "specializes_in": [
+        "Penetration testing methodologies (OWASP, NIST, PTES)",
+        "Exploit development and payload creation",
+        "Social engineering and phishing campaigns",
+        "Privilege escalation techniques",
+        "Red team operations and adversary simulation"
+      ]
+    },
+    {
+      "name": "scout",
+      "expertise": "Network discovery, port scanning, service enumeration, application fingerprinting, OSINT gathering, and reconnaissance techniques",
+      "description": "Expert in reconnaissance, discovery, and information gathering across networks and applications",
+      "specializes_in": [
+        "Network mapping and port scanning (Nmap, Masscan)",
+        "Service enumeration and banner grabbing",
+        "Web application discovery and crawling",
+        "OSINT techniques and passive reconnaissance",
+        "Asset discovery and inventory management"
+      ]
+    },
+    {
+      "name": "shield",
+      "expertise": "Blue teaming, incident response, threat hunting, SOC operations, SIEM management, and defensive security measures",
+      "description": "Specialist in defensive security, incident response, and proactive threat detection",
+      "specializes_in": [
+        "Incident response procedures and playbooks",
+        "Threat hunting methodologies and techniques",
+        "SIEM rule development and tuning",
+        "Digital forensics and malware analysis",
+        "SOC operations and monitoring strategies"
+      ]
+    }
+  ],
+  "keywords": [
+    "security", "infosec", "cybersecurity", "vulnerability", "compliance", 
+    "pentest", "red team", "exploit", "reconnaissance", "discovery",
+    "blue team", "incident", "response", "defense", "monitoring"
+  ],
+  "patterns": [
+    "\\b(security|infosec|cybersecurity)\\b",
+    "\\b(vulnerability|exploit|CVE)\\b", 
+    "\\b(compliance|audit|framework)\\b",
+    "\\b(pentest|penetration|red.?team)\\b",
+    "\\b(reconnaissance|discovery|enumeration)\\b",
+    "\\b(blue.?team|incident|response|defense)\\b"
+  ]
+}

@@ -1,227 +1,219 @@
-# Agent Generator Deployment Guide
+# Cloudflare Deployment Guide - Aktoh Cyber InfoSec Agents
 
-This guide walks through deploying the complete GitOps Agent Generation system.
+This guide walks you through deploying the InfoSec LangGraph agents to Cloudflare using Pulumi infrastructure-as-code.
 
-## 🚀 Quick Start
+## 🎯 Overview
 
-### 1. Prerequisites
+We'll be deploying:
+- **InfoSec Supervisor Agent** at `infosec.a.aktohcyber.com`
+- **Judge Agent** at `judge.a.aktohcyber.com`
+- **Lancer Agent** at `lancer.a.aktohcyber.com`
+- **Scout Agent** at `scout.a.aktohcyber.com`
+- **Shield Agent** at `shield.a.aktohcyber.com`
 
-- Cloudflare account with Workers Paid plan
-- GitHub account with Personal Access Token
-- Node.js 18+ and npm installed
-- `wrangler` CLI installed globally: `npm install -g wrangler`
+## 📋 Prerequisites
 
-### 2. Configure Cloudflare
+### 1. Domain Setup
+- You own `aktohcyber.com`
+- Domain is configured in Cloudflare (DNS management)
+
+### 2. Required Tools
+```bash
+# Install Pulumi
+curl -fsSL https://get.pulumi.com | sh
+
+# Install Node.js (for Pulumi TypeScript)
+# Download from https://nodejs.org/ or use your package manager
+
+# Install Wrangler CLI
+npm install -g wrangler
+```
+
+### 3. Cloudflare Credentials
+You'll need:
+- **Cloudflare API Token** (with Workers and Zone permissions)
+- **Account ID** 
+- **Zone ID** for `aktohcyber.com`
+
+To find these:
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com)
+2. **Account ID**: Right sidebar on any page
+3. **Zone ID**: Domain overview page, right sidebar
+4. **API Token**: My Profile → API Tokens → Create Token
+
+## 🏗️ Infrastructure Setup
+
+### Step 1: Get Your Cloudflare Information
+
+First, let's gather the required information:
 
 ```bash
-# Login to Cloudflare
-wrangler auth login
-
-# Get your account and zone IDs
-wrangler whoami
+# Test your API token
+export CLOUDFLARE_API_TOKEN="your-api-token-here"
+curl -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+  -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+  -H "Content-Type: application/json"
 ```
 
-### 3. Setup GitHub Integration
-
-Create a GitHub Personal Access Token with these permissions:
-- `repo` (Full control of private repositories)
-- `workflow` (Update GitHub Action workflows)
-
-### 4. Deploy Agent Generator
+### Step 2: Find Your Zone and Account IDs
 
 ```bash
-# Navigate to the generated agent
-cd agent-generator-test/generator
-
-# Update wrangler.toml with your IDs
-# Edit: account_id, zone_id, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
-
-# Set GitHub token as secret
-wrangler secret put GITHUB_TOKEN
-# Enter your GitHub Personal Access Token when prompted
-
-# Deploy the agent
-wrangler deploy
+# List zones to find aktohcyber.com zone ID
+curl -X GET "https://api.cloudflare.com/client/v4/zones" \
+  -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+  -H "Content-Type: application/json" | jq '.result[] | select(.name=="aktohcyber.com") | {name, id, account_id: .account.id}'
 ```
 
-### 5. Configure GitHub Repository
+## 🗂️ Project Structure
 
-Add these secrets to your GitHub repository:
-- `CLOUDFLARE_API_TOKEN`: Your Cloudflare API token
-
-Enable GitHub Actions in your repository settings.
-
-## 📋 Complete Architecture
-
-### Repository Structure
+Let's create the deployment structure:
 
 ```
-agent-framework/
-├── generators/                    # Language-specific generators
-│   ├── javascript/               # JavaScript generator
-│   └── python/                   # Python generator (with GeneratorAgent)
-├── generated-agents/             # Auto-generated agents
-│   ├── router-agents/           # Router agents
-│   └── specialist-agents/       # Specialist agents  
-├── .github/workflows/           # CI/CD automation
-│   ├── deploy-agents.yml       # Deploy new/updated agents
-│   └── cleanup-agents.yml      # Remove deleted agents
-└── agent-generator-test/        # Agent Generator deployment
-    └── generator/               # The main generator agent
+agentopia/
+├── deployment/
+│   ├── pulumi/
+│   │   ├── Pulumi.yaml
+│   │   ├── index.ts
+│   │   ├── package.json
+│   │   └── agents/
+│   │       ├── infosec-supervisor.ts
+│   │       ├── judge.ts
+│   │       ├── lancer.ts
+│   │       ├── scout.ts
+│   │       └── shield.ts
+│   └── configs/
+│       ├── infosec-supervisor.json
+│       ├── judge.json
+│       ├── lancer.json
+│       ├── scout.json
+│       └── shield.json
 ```
 
-### Workflow Process
+## 🚀 Deployment Steps
 
-1. **User Request**: Access Agent Generator web UI
-2. **Configuration**: Fill out agent requirements form
-3. **Generation**: System creates all agent files
-4. **GitHub Commit**: Files committed to feature branch
-5. **Pull Request**: Auto-created PR with validation
-6. **CI/CD Pipeline**: GitHub Actions validate and test
-7. **Deployment**: Merge triggers deployment to Cloudflare
-8. **Live Agent**: Agent available at specified domain
+### Step 3: Set Environment Variables
 
-## 🔧 Configuration Examples
+Set your Cloudflare credentials:
 
-### Environment Variables (wrangler.toml)
+```bash
+# Set your API token (keep this secure!)
+export CLOUDFLARE_API_TOKEN="your-api-token-here"
 
-```toml
-[vars]
-MAX_TOKENS = "1024"
-TEMPERATURE = "0.2"
-GITHUB_REPO_OWNER = "your-username"
-GITHUB_REPO_NAME = "agent-framework"
+# Set your Account ID (from Step 2)
+export CLOUDFLARE_ACCOUNT_ID="your-account-id-here"
 
-# Secrets (set with wrangler secret put)
-# GITHUB_TOKEN = "ghp_your_token_here"
+# Set your Zone ID for aktohcyber.com (from Step 2)
+export CLOUDFLARE_ZONE_ID="your-zone-id-here"
 ```
 
-### Agent Configuration Example
+### Step 4: Run the Deployment
 
-```json
-{
-  "type": "specialist",
-  "name": "Threat Intelligence Expert", 
-  "description": "AI specialist for threat analysis",
-  "domain": "threat-intel.yourdomain.com",
-  "systemPrompt": "You are a threat intelligence expert...",
-  "expertise": "threat intelligence and IOC analysis",
-  "keywords": ["threat", "intel", "ioc", "malware"],
-  "accountId": "your-cloudflare-account-id",
-  "zoneId": "your-cloudflare-zone-id"
-}
+The deployment structure has been created for you. Simply run:
+
+```bash
+# Navigate to the agentopia directory
+cd /path/to/agentopia
+
+# Run the deployment script
+./deployment/deploy.sh
 ```
 
-## 🛠️ Development Workflow
+This script will:
+1. ✅ Check all prerequisites
+2. 📦 Install Pulumi dependencies
+3. 🔧 Configure the Pulumi stack
+4. 👀 Show you a preview of what will be deployed
+5. 🚀 Deploy all 5 agents to Cloudflare
+6. 🌐 Set up DNS records for `*.a.aktohcyber.com`
 
-### Creating a New Agent
+### Step 5: Verify Deployment
 
-1. **Access Generator**: Navigate to `https://generator.yourdomain.com`
-2. **Configure Agent**: Fill out the web form
-3. **Generate**: Click "🚀 Generate Agent"
-4. **Review PR**: Check the auto-created pull request
-5. **Merge**: Approve and merge to deploy
+After deployment, test each agent:
 
-### Updating Existing Agent
+```bash
+# Test the InfoSec Supervisor
+curl https://infosec.a.aktohcyber.com/
 
-1. **Modify Config**: Update the agent's configuration
-2. **Regenerate**: Use the generator to create updated version
-3. **Auto-Replace**: System replaces existing agent files
-4. **Deploy**: Standard CI/CD process deploys updates
+# Test Judge (Vulnerability & Compliance)
+curl https://judge.a.aktohcyber.com/
 
-### Removing Agents
+# Test Lancer (Red Team & Penetration Testing)
+curl https://lancer.a.aktohcyber.com/
 
-1. **Delete Files**: Remove agent directory from `generated-agents/`
-2. **Commit**: Commit the deletion
-3. **Auto-Cleanup**: Cleanup workflow removes Cloudflare resources
+# Test Scout (Discovery & Reconnaissance)
+curl https://scout.a.aktohcyber.com/
 
-## 🔍 Monitoring and Debugging
+# Test Shield (Blue Team & Incident Response)
+curl https://shield.a.aktohcyber.com/
+```
 
-### GitHub Actions Logs
+## 🔧 Configuration Details
 
-- **Deploy Workflow**: Monitor agent deployments
-- **Cleanup Workflow**: Track agent removals
-- **Validation**: Check configuration validation
+### DNS Structure
 
-### Cloudflare Dashboard
+All agents are deployed under the `a.aktohcyber.com` subdomain:
 
-- **Workers**: Monitor deployed agents
-- **Analytics**: View usage and performance
-- **Logs**: Debug runtime issues
+- `infosec.a.aktohcyber.com` - Main supervisor agent
+- `judge.a.aktohcyber.com` - Vulnerability & compliance specialist
+- `lancer.a.aktohcyber.com` - Red team & penetration testing specialist
+- `scout.a.aktohcyber.com` - Discovery & reconnaissance specialist
+- `shield.a.aktohcyber.com` - Blue team & incident response specialist
 
-### Agent Generator Logs
+### Agent Capabilities
 
-- **MCP Calls**: Monitor agent generation requests
-- **GitHub API**: Track repository interactions
-- **Validation**: Check configuration errors
+#### InfoSec Supervisor 🛡️
+- **LangGraph Supervisor Pattern**: Intelligently routes questions to specialists
+- **4 Specialized Agents**: Coordinates Judge, Lancer, Scout, and Shield
+- **Smart Routing**: AI-powered decision making for optimal specialist selection
 
-## 🚨 Troubleshooting
+#### Judge ⚖️ (Vulnerability & Compliance)
+- CVE analysis and CVSS scoring
+- Compliance frameworks (SOC 2, GDPR, HIPAA, PCI-DSS, ISO 27001, NIST)
+- Vulnerability scanning and assessment
+- Risk assessment and gap analysis
+
+#### Lancer ⚔️ (Red Team & Penetration Testing)
+- Penetration testing methodologies (OWASP, NIST, PTES)
+- Exploit development and payload creation
+- Social engineering and phishing campaigns
+- Red team operations and adversary simulation
+
+#### Scout 🔍 (Discovery & Reconnaissance)
+- Network mapping and port scanning (Nmap, Masscan)
+- Service enumeration and banner grabbing
+- OSINT techniques and passive reconnaissance
+- Asset discovery and inventory management
+
+#### Shield 🛡️ (Blue Team & Incident Response)
+- Incident response procedures and playbooks
+- Threat hunting methodologies and techniques
+- SIEM rule development and tuning
+- Digital forensics and SOC operations
+
+## 🛠️ Troubleshooting
 
 ### Common Issues
 
-**GitHub Token Issues**
-```bash
-# Verify token permissions
-curl -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/user
+1. **API Token Permissions**: Ensure your token has Zone and Workers permissions
+2. **Domain Not in Cloudflare**: Make sure `aktohcyber.com` is managed by Cloudflare
+3. **Pulumi Stack Issues**: Delete and recreate with `pulumi stack rm dev` then `pulumi stack init dev`
 
-# Update token
-wrangler secret put GITHUB_TOKEN
-```
+### Getting Help
 
-**Deployment Failures**
-```bash
-# Check wrangler configuration
-wrangler whoami
+If you encounter issues:
+1. Check the Pulumi logs: `pulumi logs`
+2. Verify Cloudflare dashboard shows the workers and DNS records
+3. Test individual components with `curl` commands above
 
-# Validate configuration
-npx wrangler deploy --dry-run
-```
+## 📚 Next Steps
 
-**Agent Generation Errors**
-- Check required fields in configuration
-- Verify GitHub repository exists
-- Confirm Cloudflare IDs are correct
-
-### Debug Mode
-
-Enable debug logging by setting environment variables:
-
-```bash
-# In wrangler.toml [vars]
-DEBUG = "true"
-LOG_LEVEL = "debug"
-```
-
-## 🎯 Best Practices
-
-### Security
-
-- Use GitHub secrets for sensitive data
-- Rotate API tokens regularly
-- Review generated code before deployment
-- Use branch protection rules
-
-### Performance
-
-- Cache agent responses appropriately
-- Monitor Worker execution times
-- Use appropriate resource limits
-- Implement rate limiting
-
-### Maintenance
-
-- Regular dependency updates
-- Monitor GitHub API rate limits
-- Clean up unused branches
-- Review generated agent metrics
-
-## 📚 Additional Resources
-
-- [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
-- [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- [Model Context Protocol](https://github.com/modelcontextprotocol)
-- [Pyodide Documentation](https://pyodide.org/)
+After successful deployment:
+1. 🔐 Set up monitoring and alerting
+2. 📊 Configure analytics and logging
+3. 🔄 Set up CI/CD for updates
+4. 📖 Update internal documentation with new URLs
+5. 🧪 Conduct security testing of the deployed agents
 
 ---
 
-*For support, create an issue in the repository or contact the development team.*
+**🎉 Congratulations!** Your Aktoh Cyber InfoSec agents are now deployed and ready to assist with comprehensive security guidance!

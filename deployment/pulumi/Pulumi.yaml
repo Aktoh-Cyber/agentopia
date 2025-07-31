@@ -1,0 +1,14 @@
+name: aktoh-cyber-infosec
+runtime: nodejs
+description: Aktoh Cyber InfoSec agent deployment on Cloudflare Workers
+template:
+  config:
+    cloudflare:apiToken:
+      description: Cloudflare API token
+      secret: true
+    aktoh-cyber-infosec:accountId:
+      description: Cloudflare Account ID
+      secret: true
+    aktoh-cyber-infosec:zoneId:
+      description: Cloudflare Zone ID for aktohcyber.com
+      secret: true

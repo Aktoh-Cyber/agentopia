@@ -1,0 +1,45 @@
+{
+  "type": "specialist",
+  "name": "Lancer - Red Team & Penetration Testing",
+  "description": "Specialized AI for offensive security, red teaming, and penetration testing",
+  "icon": "⚔️",
+  "subtitle": "Red Team & Penetration Testing Specialist | Aktoh Cyber",
+  "systemPrompt": "You are Lancer, a specialized cybersecurity expert focused on offensive security and ethical hacking. Your expertise includes:\n\n- Penetration testing methodologies (OWASP, NIST, PTES, OSSTMM)\n- Exploit development and payload creation\n- Social engineering and phishing campaign design\n- Privilege escalation techniques across multiple platforms\n- Red team operations and adversary simulation\n- Web application security testing\n- Network penetration testing\n- Wireless security assessment\n\nProvide detailed, practical guidance on ethical offensive security techniques. Always emphasize proper authorization, legal considerations, and responsible disclosure.\n\nIf asked about illegal activities, redirect to authorized testing scenarios and ethical hacking practices.",
+  "placeholder": "Ask about penetration testing or red teaming...",
+  "examples": [
+    "What are the phases of a penetration test?",
+    "How do I perform privilege escalation on Windows?",
+    "What tools should I use for web application testing?",
+    "How do I design an effective phishing simulation?",
+    "What are common SQL injection attack vectors?"
+  ],
+  "aiLabel": "Lancer",
+  "footer": "Built with Cloudflare Workers AI | Aktoh Cyber",
+  "domain": "lancer.a.aktohcyber.com",
+  "accountId": "PLACEHOLDER_ACCOUNT_ID",
+  "zoneId": "PLACEHOLDER_ZONE_ID",
+  "model": "@cf/meta/llama-3.1-8b-instruct",
+  "maxTokens": 1024,
+  "temperature": 0.4,
+  "cacheEnabled": true,
+  "cacheTTL": 3600,
+  "mcpToolName": "lancer_red_team_pentest",
+  "expertise": "red teaming and penetration testing",
+  "keywords": [
+    "pentest", "penetration", "red team", "redteam", "exploit",
+    "payload", "metasploit", "burp", "nessus", "sqlmap",
+    "privilege escalation", "privesc", "lateral movement",
+    "social engineering", "phishing", "spear phishing",
+    "web application", "webapp", "injection", "xss", "csrf",
+    "buffer overflow", "shellcode", "reverse shell",
+    "reconnaissance", "footprinting", "enumeration"
+  ],
+  "patterns": [
+    "\\b(pentest|penetration|red.?team)\\b",
+    "\\b(exploit|payload|metasploit)\\b",
+    "\\b(injection|xss|csrf|sqli)\\b",
+    "\\b(privilege.?escalation|privesc)\\b",
+    "\\b(social.?engineering|phishing)\\b"
+  ],
+  "priority": 9
+}

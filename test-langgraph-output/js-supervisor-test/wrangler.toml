@@ -1,0 +1,19 @@
+name = "{{domain.split('.')[0]}}"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+account_id = "your-account-id"
+
+[ai]
+binding = "AI"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "94f2859d6efd4fc8830887d5d797324a"
+
+[vars]
+MAX_TOKENS = "1024"
+TEMPERATURE = "0.7"
+
+[[routes]]
+pattern = "supervisor-demo.example.com/*"
+zone_id = "your-zone-id"

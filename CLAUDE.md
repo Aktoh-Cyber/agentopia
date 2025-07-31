@@ -45,6 +45,10 @@ node build-agent.js configs/infosec-router.json ../../output-dir
 # Python agent  
 cd generators/python
 python3 agent_builder.py configs/infosec-router.json ../../output-dir
+
+# LangGraph pattern agents (both languages)
+node build-agent.js configs/supervisor-example.json ../../supervisor-demo
+python3 agent_builder.py configs/committee-example.json ../../committee-demo
 ```
 
 ### Development and Deployment
@@ -104,6 +108,17 @@ All agents automatically expose MCP endpoints:
 - `tools/call` method for agent invocation
 - `POST /admin/tools` for dynamic tool registration
 
+## Deep Agent Patterns
+
+For advanced multi-agent architectures and cognitive patterns, see [DEEP_AGENT_PATTERNS.md](./DEEP_AGENT_PATTERNS.md). This document covers 24 different architectural patterns including:
+
+- **Multi-Agent Patterns**: Network, Supervisor, Hierarchical, Router, Tool-Calling
+- **Cognitive Architectures**: Single LLM, Chain of LLM Calls, State Machine, Autonomous Agent
+- **Ensemble Patterns**: Committee, Consultant, Voting-Based Aggregator
+- **Advanced Patterns**: Swarm, Auction-Based, Pub-Sub, Reflection
+
+Each pattern includes Mermaid diagrams and use case guidance for building sophisticated agent systems with LangGraph.
+
 ## Language-Specific Development Notes
 
 ### JavaScript Implementation
@@ -111,6 +126,7 @@ All agents automatically expose MCP endpoints:
 - Full npm ecosystem available in production
 - Mature Cloudflare Workers support
 - No import restrictions
+- **LangChain.js integration**: Full LangChain.js support with custom Cloudflare Workers LLM
 
 ### Python Implementation  
 - Uses FFI imports for JavaScript API access: `from js import console, fetch`
@@ -177,6 +193,51 @@ prompt = ChatPromptTemplate.from_messages([
 - Type-safe abstractions
 - Zero external dependencies (production-ready)
 - Automatic fallback to legacy mode if imports fail
+
+## JavaScript LangChain.js Integration
+
+The JavaScript implementation provides full LangChain.js support with custom integrations for Cloudflare Workers:
+
+### Available Components
+- **Full LangChain.js ecosystem**: All standard LangChain.js packages and components
+- **Custom CloudflareWorkersLLM**: Native integration with Cloudflare Workers AI
+- **Chains**: LLMChain, custom RouterChain, and all standard chains
+- **Memory**: BufferMemory and other memory types for conversation tracking
+- **Prompts**: ChatPromptTemplate, PromptTemplate with full templating
+- **Message Types**: SystemMessage, HumanMessage, AIMessage
+
+### Usage Example
+```javascript
+import { BaseAgent } from './base-agent.js';
+
+// Agents use LangChain.js by default
+const agent = new BaseAgent(config);
+
+// Or explicitly control:
+config.useLangchain = true;  // Enable (default)
+config.useLangchain = false; // Use legacy interface
+
+// Custom chains work naturally
+const prompt = ChatPromptTemplate.fromTemplate("You are {role}. {question}");
+const chain = new LLMChain({ llm: agent.llm, prompt });
+```
+
+### Router Enhancement
+- **RouterChain**: AI-powered routing decisions with confidence scoring
+- **Enhanced prompts**: Dynamic routing analysis with JSON responses
+- **Fallback support**: Graceful degradation to keyword/pattern matching
+- **Visual indicators**: UI shows LangChain.js enhancement status
+
+### Dependencies
+```json
+{
+  "dependencies": {
+    "langchain": "^0.1.30",
+    "@langchain/core": "^0.1.52", 
+    "@langchain/community": "^0.0.45"
+  }
+}
+```
 
 ## Code Reduction Benefits
 

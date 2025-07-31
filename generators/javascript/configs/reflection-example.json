@@ -1,0 +1,29 @@
+{
+  "name": "reflection-demo",
+  "type": "reflection",
+  "pattern": "reflection",
+  "description": "Reflection pattern for iterative improvement through self-critique",
+  "maxIterations": 8,
+  "model": "@cf/meta/llama-3.1-8b-instruct",
+  "maxTokens": 1024,
+  "temperature": 0.6,
+  "domain": "reflection-demo.example.com",
+  "accountId": "your-account-id",
+  "zoneId": "your-zone-id",
+  "systemPrompt": "You use a reflection pattern with worker and critic agents to iteratively improve solutions through feedback loops.",
+  "useLangchain": true,
+  "agents": [
+    {
+      "name": "worker",
+      "expertise": "Problem solving, solution development, and implementation",
+      "description": "Generates initial solutions and improvements based on feedback"
+    },
+    {
+      "name": "reflector",
+      "expertise": "Critical analysis, quality assessment, and improvement suggestions",
+      "description": "Evaluates work quality and provides constructive feedback"
+    }
+  ],
+  "keywords": ["reflection", "improvement", "iteration", "feedback"],
+  "patterns": ["reflect.*improve", "iterative.*development"]
+}

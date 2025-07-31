@@ -1,0 +1,24 @@
+{
+  "name": "autonomous-demo",
+  "type": "autonomous",
+  "pattern": "autonomous",
+  "description": "Autonomous agent that self-directs and adapts its approach",
+  "maxIterations": 15,
+  "model": "@cf/meta/llama-3.1-8b-instruct",
+  "maxTokens": 1024,
+  "temperature": 0.7,
+  "domain": "autonomous-demo.example.com",
+  "accountId": "your-account-id",
+  "zoneId": "your-zone-id",
+  "systemPrompt": "You are an autonomous agent capable of planning, executing, and adapting your approach based on results.",
+  "useLangchain": true,
+  "agents": [
+    {
+      "name": "autonomous",
+      "expertise": "Self-direction, adaptive planning, and autonomous execution",
+      "description": "Makes independent decisions about task approach and execution"
+    }
+  ],
+  "keywords": ["autonomous", "self-directing", "adaptive", "independent"],
+  "patterns": ["autonomous.*agent", "self.*direct"]
+}

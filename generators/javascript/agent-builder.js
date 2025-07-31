@@ -29,6 +29,21 @@ export class AgentBuilder {
       packageTemplate: this.getPackageTemplate(),
       deployScriptTemplate: this.getDeployScriptTemplate()
     });
+
+    // LangGraph pattern templates
+    const langGraphPatterns = [
+      'supervisor', 'network', 'hierarchical', 'committee', 
+      'reflection', 'pipeline', 'autonomous'
+    ];
+    
+    for (const pattern of langGraphPatterns) {
+      this.templates.set(pattern, {
+        indexTemplate: this.getLangGraphTemplate(),
+        wranglerTemplate: this.getWranglerTemplate(),
+        packageTemplate: this.getLangGraphPackageTemplate(),
+        deployScriptTemplate: this.getDeployScriptTemplate()
+      });
+    }
   }
 
   /**
@@ -266,6 +281,49 @@ export default {
   }
 
   /**
+   * LangGraph agent template
+   */
+  getLangGraphTemplate() {
+    return `// Auto-generated LangGraph agent
+// Generated from configuration at {{timestamp}}
+
+import { LangGraphAgent } from '../agent-framework/langgraph-agent.js';
+
+class {{name.replace(/\s+/g, '')}}Agent extends LangGraphAgent {
+  constructor() {
+    super({
+      name: '{{name}}',
+      description: '{{description}}',
+      icon: '{{icon}}',
+      subtitle: '{{subtitle}}',
+      systemPrompt: \`{{systemPrompt}}\`,
+      placeholder: '{{placeholder}}',
+      examples: {{JSON.stringify(examples)}},
+      aiLabel: '{{aiLabel}}',
+      footer: '{{footer}}',
+      model: '{{model}}',
+      maxTokens: {{maxTokens}},
+      temperature: {{temperature}},
+      cacheEnabled: {{cacheEnabled}},
+      cacheTTL: {{cacheTTL}},
+      pattern: '{{pattern}}',
+      maxIterations: {{maxIterations}},
+      agents: {{JSON.stringify(agents)}},
+      useLangchain: {{useLangchain}}
+    });
+  }
+}
+
+// Export default handler
+export default {
+  async fetch(request, env) {
+    const agent = new {{name.replace(/\s+/g, '')}}Agent();
+    return agent.fetch(request, env);
+  }
+};`;
+  }
+
+  /**
    * Wrangler configuration template
    */
   getWranglerTemplate() {
@@ -305,6 +363,30 @@ zone_id = "{{zoneId}}"`;
   },
   "dependencies": {
     "wrangler": "^3.0.0"
+  }
+}`;
+  }
+
+  /**
+   * LangGraph Package.json template with LangChain dependencies
+   */
+  getLangGraphPackageTemplate() {
+    return `{
+  "name": "{{domain.split('.')[0]}}",
+  "version": "1.0.0",
+  "description": "{{description}}",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "wrangler": "^3.0.0",
+    "langchain": "^0.1.30",
+    "@langchain/core": "^0.1.52",
+    "@langchain/community": "^0.0.45",
+    "@langchain/langgraph": "^0.0.19"
   }
 }`;
   }

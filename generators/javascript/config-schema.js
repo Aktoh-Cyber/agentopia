@@ -4,7 +4,14 @@
 
 export const AGENT_TYPES = {
   ROUTER: 'router',
-  SPECIALIST: 'specialist'
+  SPECIALIST: 'specialist',
+  SUPERVISOR: 'supervisor',
+  NETWORK: 'network',
+  HIERARCHICAL: 'hierarchical',
+  COMMITTEE: 'committee',
+  REFLECTION: 'reflection',
+  PIPELINE: 'pipeline',
+  AUTONOMOUS: 'autonomous'
 };
 
 /**
@@ -240,6 +247,17 @@ export function validateConfig(config) {
     errors.push('keywords are required for specialist agents');
   }
   
+  // LangGraph pattern validations
+  const langGraphPatterns = ['supervisor', 'network', 'hierarchical', 'committee', 'reflection', 'pipeline', 'autonomous'];
+  if (langGraphPatterns.includes(config.type)) {
+    if (!config.pattern) {
+      errors.push('pattern is required for LangGraph agents');
+    }
+    if (!config.agents || !Array.isArray(config.agents)) {
+      errors.push('agents array is required for LangGraph agents');
+    }
+  }
+  
   return errors;
 }
 
@@ -247,28 +265,49 @@ export function validateConfig(config) {
  * Helper to get default config for agent type
  */
 export function getDefaultConfig(type) {
+  const baseDefaults = {
+    model: '@cf/meta/llama-3.1-8b-instruct',
+    maxTokens: 512,
+    temperature: 0.3,
+    cacheEnabled: true,
+    cacheTTL: 3600,
+    icon: '🤖',
+    placeholder: 'Ask a question...',
+    aiLabel: 'AI Assistant',
+    footer: 'Built with Cloudflare Workers AI'
+  };
+
+  const langGraphPatterns = ['supervisor', 'network', 'hierarchical', 'committee', 'reflection', 'pipeline', 'autonomous'];
+
   switch (type) {
     case AGENT_TYPES.ROUTER:
       return {
+        ...baseDefaults,
         type: 'router',
-        model: '@cf/meta/llama-3.1-8b-instruct',
-        maxTokens: 512,
-        temperature: 0.3,
-        cacheEnabled: true,
-        cacheTTL: 3600,
         registry: { tools: [] }
       };
     case AGENT_TYPES.SPECIALIST:
       return {
+        ...baseDefaults,
         type: 'specialist',
-        model: '@cf/meta/llama-3.1-8b-instruct',
-        maxTokens: 512,
-        temperature: 0.3,
-        cacheEnabled: true,
-        cacheTTL: 3600,
         keywords: [],
         patterns: [],
         priority: 5
+      };
+    case AGENT_TYPES.SUPERVISOR:
+    case AGENT_TYPES.NETWORK:
+    case AGENT_TYPES.HIERARCHICAL:
+    case AGENT_TYPES.COMMITTEE:
+    case AGENT_TYPES.REFLECTION:
+    case AGENT_TYPES.PIPELINE:
+    case AGENT_TYPES.AUTONOMOUS:
+      return {
+        ...baseDefaults,
+        type: type,
+        pattern: type,
+        maxIterations: 10,
+        agents: [],
+        useLangchain: true
       };
     default:
       throw new Error(`Unknown agent type: ${type}`);

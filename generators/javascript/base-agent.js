@@ -1,6 +1,70 @@
 /**
- * Base Agent Class - Common functionality for all agents
+ * Base Agent Class - Common functionality for all agents with LangChain.js integration
  */
+
+import { ChatPromptTemplate } from "@langchain/core/prompts";
+import { HumanMessage, SystemMessage, AIMessage } from "@langchain/core/messages";
+import { BufferMemory } from "langchain/memory";
+import { LLMChain } from "langchain/chains";
+import { BaseLLM } from "@langchain/core/language_models/llms";
+
+/**
+ * Custom LLM for Cloudflare Workers AI
+ */
+class CloudflareWorkersLLM extends BaseLLM {
+  constructor(env, config) {
+    super({});
+    this.env = env;
+    this.model = config.model;
+    this.maxTokens = config.maxTokens;
+    this.temperature = config.temperature;
+  }
+
+  async _call(prompt, options) {
+    const response = await this.env.AI.run(this.model, {
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: this.maxTokens,
+      temperature: this.temperature,
+      ...options
+    });
+
+    return response.response || 'I apologize, but I could not generate a response. Please try again.';
+  }
+
+  async _generate(messages, options) {
+    // Convert LangChain messages to Cloudflare format
+    const cfMessages = messages.map(msg => {
+      if (msg instanceof SystemMessage) {
+        return { role: 'system', content: msg.content };
+      } else if (msg instanceof HumanMessage) {
+        return { role: 'user', content: msg.content };
+      } else if (msg instanceof AIMessage) {
+        return { role: 'assistant', content: msg.content };
+      }
+      return { role: 'user', content: msg.content };
+    });
+
+    const response = await this.env.AI.run(this.model, {
+      messages: cfMessages,
+      max_tokens: this.maxTokens,
+      temperature: this.temperature,
+      ...options
+    });
+
+    const text = response.response || 'I apologize, but I could not generate a response. Please try again.';
+    
+    return {
+      generations: [{
+        text,
+        message: new AIMessage(text)
+      }]
+    };
+  }
+
+  _llmType() {
+    return 'cloudflare-workers';
+  }
+}
 
 export class BaseAgent {
   constructor(config) {
@@ -15,8 +79,47 @@ export class BaseAgent {
       model: config.model || '@cf/meta/llama-3.1-8b-instruct',
       cacheEnabled: config.cacheEnabled !== false,
       cacheTTL: config.cacheTTL || 3600,
+      useLangchain: config.useLangchain !== false, // Enable LangChain by default
       ...config
     };
+
+    // Initialize LangChain components (will be set up when env is available)
+    this.llm = null;
+    this.memory = null;
+    this.chain = null;
+    this.promptTemplate = null;
+  }
+
+  /**
+   * Initialize LangChain components with environment
+   */
+  setupLangChainComponents(env) {
+    if (!this.config.useLangchain) {
+      return;
+    }
+
+    // Initialize LLM
+    this.llm = new CloudflareWorkersLLM(env, this.config);
+
+    // Initialize memory
+    this.memory = new BufferMemory({
+      returnMessages: true,
+      memoryKey: "history"
+    });
+
+    // Create prompt template
+    this.promptTemplate = ChatPromptTemplate.fromMessages([
+      ["system", this.config.systemPrompt],
+      ["placeholder", "{history}"],
+      ["human", "{question}"]
+    ]);
+
+    // Create chain
+    this.chain = new LLMChain({
+      llm: this.llm,
+      prompt: this.promptTemplate,
+      memory: this.memory
+    });
   }
 
   /**
@@ -60,7 +163,7 @@ export class BaseAgent {
   }
 
   /**
-   * Call AI model with system prompt
+   * Call AI model with system prompt (legacy method)
    */
   async callAI(env, question) {
     const response = await env.AI.run(this.config.model, {
@@ -76,9 +179,45 @@ export class BaseAgent {
   }
 
   /**
-   * Process a question (override in specialized agents)
+   * Process question using LangChain
    */
-  async processQuestion(env, question) {
+  async processQuestionLangChain(env, question) {
+    // Initialize components if not already done
+    if (!this.llm) {
+      this.setupLangChainComponents(env);
+    }
+
+    // Check cache first
+    const cacheKey = `q:${question.toLowerCase().trim()}`;
+    const cached = await this.getFromCache(env, cacheKey);
+    
+    if (cached) {
+      return { answer: cached, cached: true };
+    }
+
+    try {
+      // Run the chain
+      const result = await this.chain.call({
+        question: question
+      });
+
+      const answer = result.text || result.response || 'I apologize, but I could not generate a response.';
+
+      // Cache the response
+      await this.putInCache(env, cacheKey, answer);
+
+      return { answer, cached: false };
+    } catch (error) {
+      console.error('LangChain processing error:', error);
+      // Fallback to legacy method
+      return await this.processQuestionLegacy(env, question);
+    }
+  }
+
+  /**
+   * Process question using legacy method
+   */
+  async processQuestionLegacy(env, question) {
     // Check cache first
     const cacheKey = `q:${question.toLowerCase().trim()}`;
     const cached = await this.getFromCache(env, cacheKey);
@@ -94,6 +233,17 @@ export class BaseAgent {
     await this.putInCache(env, cacheKey, answer);
 
     return { answer, cached: false };
+  }
+
+  /**
+   * Process a question (uses LangChain if enabled)
+   */
+  async processQuestion(env, question) {
+    if (this.config.useLangchain) {
+      return await this.processQuestionLangChain(env, question);
+    } else {
+      return await this.processQuestionLegacy(env, question);
+    }
   }
 
   /**
@@ -184,6 +334,7 @@ export class BaseAgent {
     <header>
         <h1>${this.config.icon} ${this.config.name}</h1>
         <p class="subtitle">${this.config.subtitle || 'Powered by AI'}</p>
+        ${this.config.useLangchain ? '<p class="tech-badge">🦜 LangChain.js Enhanced</p>' : ''}
     </header>
     
     <div class="container">
@@ -254,6 +405,14 @@ export class BaseAgent {
             text-align: center;
             color: #8892b0;
             margin-top: 0.5rem;
+        }
+
+        .tech-badge {
+            text-align: center;
+            color: #64ffda;
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+            opacity: 0.8;
         }
         
         .container {

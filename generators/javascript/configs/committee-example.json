@@ -1,0 +1,39 @@
+{
+  "name": "committee-demo",
+  "type": "committee",
+  "pattern": "committee",
+  "description": "Committee pattern for collaborative decision making with multiple perspectives",
+  "maxIterations": 5,
+  "model": "@cf/meta/llama-3.1-8b-instruct",
+  "maxTokens": 1024,
+  "temperature": 0.8,
+  "domain": "committee-demo.example.com",
+  "accountId": "your-account-id",
+  "zoneId": "your-zone-id",
+  "systemPrompt": "You coordinate a committee of diverse experts to provide comprehensive analysis and recommendations.",
+  "useLangchain": true,
+  "agents": [
+    {
+      "name": "technical_expert",
+      "expertise": "Technical feasibility, implementation details, and system architecture",
+      "description": "Evaluates technical aspects and implementation challenges"
+    },
+    {
+      "name": "business_analyst",
+      "expertise": "Business impact, ROI analysis, and strategic alignment",
+      "description": "Analyzes business value and strategic implications"
+    },
+    {
+      "name": "risk_assessor",
+      "expertise": "Risk analysis, compliance, and security considerations",
+      "description": "Identifies potential risks and mitigation strategies"
+    },
+    {
+      "name": "user_advocate",
+      "expertise": "User experience, accessibility, and human factors",
+      "description": "Represents user needs and experience considerations"
+    }
+  ],
+  "keywords": ["committee", "collaboration", "consensus", "diverse perspectives"],
+  "patterns": ["committee.*decision", "collaborative.*analysis"]
+}

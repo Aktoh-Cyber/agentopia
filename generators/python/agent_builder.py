@@ -31,11 +31,22 @@ class PythonAgentBuilder:
                 errors.append(f"{field} is required")
 
         agent_type = config.get("type")
+        langgraph_patterns = [
+            'supervisor', 'network', 'hierarchical', 'committee', 
+            'reflection', 'pipeline', 'autonomous'
+        ]
+        
         if agent_type == "router" and not config.get("registry"):
             errors.append("registry is required for router agents")
 
         if agent_type == "specialist" and not config.get("keywords"):
             errors.append("keywords are required for specialist agents")
+            
+        if agent_type in langgraph_patterns:
+            if not config.get("pattern"):
+                errors.append("pattern is required for LangGraph agents")
+            if not config.get("agents"):
+                errors.append("agents array is required for LangGraph agents")
 
         return errors
 
@@ -53,10 +64,23 @@ class PythonAgentBuilder:
             "footer": "Built with Cloudflare Workers AI",
         }
 
+        langgraph_patterns = [
+            'supervisor', 'network', 'hierarchical', 'committee', 
+            'reflection', 'pipeline', 'autonomous'
+        ]
+
         if agent_type == "router":
             defaults.update({"type": "router", "registry": {"tools": []}})
         elif agent_type == "specialist":
             defaults.update({"type": "specialist", "keywords": [], "patterns": [], "priority": 5})
+        elif agent_type in langgraph_patterns:
+            defaults.update({
+                "type": agent_type,
+                "pattern": agent_type,
+                "maxIterations": 10,
+                "agents": [],
+                "useLangchain": True
+            })
 
         return defaults
 
@@ -95,10 +119,16 @@ class PythonAgentBuilder:
 
         # Determine template directory based on agent type
         agent_type = config["type"]
-        template_dir = self.templates_dir / f"{agent_type}_agent"
-
-        if not template_dir.exists():
-            raise ValueError(f"Template not found for agent type: {agent_type}")
+        langgraph_patterns = [
+            'supervisor', 'network', 'hierarchical', 'committee', 
+            'reflection', 'pipeline', 'autonomous'
+        ]
+        
+        # LangGraph patterns don't need template directories - they use direct generation
+        if agent_type not in langgraph_patterns:
+            template_dir = self.templates_dir / f"{agent_type}_agent"
+            if not template_dir.exists():
+                raise ValueError(f"Template not found for agent type: {agent_type}")
 
         # Generate using direct file templating (simpler than cookiecutter for our case)
         try:
@@ -137,18 +167,34 @@ class PythonAgentBuilder:
 
     def generate_entry_py(self, context: dict[str, Any]) -> str:
         """Generate entry.py file"""
-        if context["type"] == "router":
+        agent_type = context["type"]
+        
+        # LangGraph patterns
+        langgraph_patterns = [
+            'supervisor', 'network', 'hierarchical', 'committee', 
+            'reflection', 'pipeline', 'autonomous'
+        ]
+        
+        if agent_type in langgraph_patterns:
+            import_line = "from agent_framework.langgraph_agent import LangGraphAgent"
+            agent_class = "LangGraphAgent"
+            agents_json = json.dumps(context.get('agents', []), indent=2)
+            config_extra = f"""    'pattern': '{context['pattern']}',
+    'maxIterations': {context.get('maxIterations', 10)},
+    'agents': {agents_json},
+    'useLangchain': {str(context.get('useLangchain', True)).lower()}"""
+        elif agent_type == "router":
             import_line = "from agent_framework import RouterAgent"
             agent_class = "RouterAgent"
             config_extra = f"    'registry': {context['registry_json']}"
         else:
             import_line = "from agent_framework import BaseAgent"
             agent_class = "BaseAgent"
-            config_extra = f"""    'mcpToolName': '{context['mcpToolName']}',
-    'expertise': '{context['expertise']}',
+            config_extra = f"""    'mcpToolName': '{context.get('mcpToolName', '')}',
+    'expertise': '{context.get('expertise', '')}',
     'keywords': {context['keywords_json']},
     'patterns': {context['patterns_json']},
-    'priority': {context['priority']}"""
+    'priority': {context.get('priority', 5)}"""
 
         return f'''# Auto-generated {context['type']} agent
 # Generated from configuration at {context['timestamp']}

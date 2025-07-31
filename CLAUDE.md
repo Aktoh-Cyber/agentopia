@@ -38,15 +38,15 @@ generators/
 
 ### Agent Generation
 ```bash
-# JavaScript agent
+# InfoSec Supervisor (LangGraph with 4 specialized agents)
 cd generators/javascript
-node build-agent.js configs/infosec-router.json ../../output-dir
+node build-agent.js configs/infosec-supervisor.json ../../infosec-supervisor
 
-# Python agent  
+# Python InfoSec Supervisor  
 cd generators/python
-python3 agent_builder.py configs/infosec-router.json ../../output-dir
+python3 agent_builder.py configs/infosec-supervisor.json ../../infosec-supervisor-py
 
-# LangGraph pattern agents (both languages)
+# Other LangGraph pattern examples
 node build-agent.js configs/supervisor-example.json ../../supervisor-demo
 python3 agent_builder.py configs/committee-example.json ../../committee-demo
 ```

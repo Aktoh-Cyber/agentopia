@@ -1,0 +1,4 @@
+test-output/
+.DS_Store
+*.pyc
+__pycache__/

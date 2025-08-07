@@ -43,7 +43,24 @@ make help
 
 ### Generate Your First Agent
 
-#### 🟨 JavaScript Agent
+You can generate agents using either the traditional generator or the new cookiecutter templates:
+
+#### 🆕 Using Cookiecutter Templates (Recommended)
+```bash
+# Install cookiecutter if not already installed
+pip install cookiecutter
+
+# Generate a JavaScript router agent
+cookiecutter https://github.com/Aktoh-Cyber/cc-js-router-agent
+
+# Generate a JavaScript specialist agent (coming soon)
+cookiecutter https://github.com/Aktoh-Cyber/cc-js-specialist-agent
+
+# Generate a Python router agent (coming soon)
+cookiecutter https://github.com/Aktoh-Cyber/cc-py-router-agent
+```
+
+#### 🟨 Using Traditional Generator
 ```bash
 make generate-js CONFIG=generators/javascript/configs/cybersec-router.json OUTPUT=agents/my-js-agent
 ```
@@ -273,6 +290,48 @@ All agents automatically expose MCP endpoints:
 ✅ **Multi-language support** for team preferences  
 ✅ **Template-based generation** for rapid development  
 ✅ **Centralized updates** through framework  
+
+## 🍪 Cookiecutter Templates
+
+We're migrating to cookiecutter templates for better maintainability and standardization. Each template is in its own GitHub repository for easy versioning and distribution.
+
+### Available Templates
+
+| Template | Repository | Status | Description |
+|----------|------------|--------|-------------|
+| JavaScript Router | [cc-js-router-agent](https://github.com/Aktoh-Cyber/cc-js-router-agent) | ✅ Ready | Router agent with intelligent routing |
+| JavaScript Specialist | [cc-js-specialist-agent](https://github.com/Aktoh-Cyber/cc-js-specialist-agent) | 🚧 In Progress | Domain-specific specialist agent |
+| Python Router | [cc-py-router-agent](https://github.com/Aktoh-Cyber/cc-py-router-agent) | 🚧 In Progress | Python router agent |
+
+### Using Cookiecutter Templates
+
+```bash
+# Install cookiecutter
+pip install cookiecutter
+
+# Generate from template
+cookiecutter https://github.com/Aktoh-Cyber/cc-js-router-agent
+
+# Follow the prompts to configure your agent
+# - project_name: Your agent's name
+# - domain: Your Cloudflare domain
+# - cloudflare_account_id: Your account ID (optional)
+# - ai_model: AI model to use
+# - etc.
+```
+
+### Cookiecutter Advantages
+
+- **Standardized Structure**: Consistent project layout across all agents
+- **Interactive Configuration**: Prompted for all required settings
+- **Validation**: Pre-generation hooks validate inputs
+- **Git Integration**: Automatically initializes git repository
+- **CI/CD Ready**: GitHub Actions workflow included
+- **Documentation**: README template with implementation notes
+
+### Template Development
+
+See [MIGRATION_PLAN.md](MIGRATION_PLAN.md) for details on the cookiecutter migration strategy.
 
 ## 🛠️ Development Workflow
 

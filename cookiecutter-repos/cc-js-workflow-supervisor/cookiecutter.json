@@ -1,0 +1,22 @@
+{
+  "project_name": "Workflow Supervisor Agent",
+  "project_slug": "{{ cookiecutter.project_name.lower().replace(' ', '-').replace('_', '-') }}",
+  "agent_class_name": "WorkflowSupervisor",
+  "description": "A JavaScript workflow supervisor agent for orchestrating multi-agent systems",
+  "domain": "workflow-supervisor.example.com",
+  "cloudflare_account_id": "",
+  "cloudflare_zone_id": "",
+  "ai_model": "@cf/meta/llama-3.1-70b-instruct",
+  "max_tokens": "2000",
+  "temperature": "0.5",
+  "cache_ttl": "3600",
+  "workflow_steps_json": "[{\"name\": \"analyze\", \"description\": \"Analyze the request\", \"agent\": \"analyst\"}, {\"name\": \"process\", \"description\": \"Process the data\", \"agent\": \"processor\"}, {\"name\": \"validate\", \"description\": \"Validate results\", \"agent\": \"validator\"}]",
+  "specialist_agents_json": "[{\"name\": \"analyst\", \"endpoint\": \"https://analyst.example.com\", \"description\": \"Analyzes requests\"}, {\"name\": \"processor\", \"endpoint\": \"https://processor.example.com\", \"description\": \"Processes data\"}, {\"name\": \"validator\", \"endpoint\": \"https://validator.example.com\", \"description\": \"Validates results\"}]",
+  "supervisor_strategy": "sequential",
+  "error_handling": "retry_with_fallback",
+  "max_retries": "3",
+  "timeout_ms": "30000",
+  "_copy_without_render": [
+    ".github/workflows/*.yml"
+  ]
+}

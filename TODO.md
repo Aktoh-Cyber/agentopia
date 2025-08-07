@@ -1,5 +1,5 @@
 * Migrate to cookiecutter. See MIGRATION_PLAN.md
-* Convert templates to
+* Convert templates to using `uv` and `pnpm`
 * Add tool generation in addition to agent generation and deep agent generation
 * Pulumi State backend in CF object storage
 * Perform cleanup

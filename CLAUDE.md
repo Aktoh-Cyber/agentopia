@@ -242,3 +242,5 @@ const chain = new LLMChain({ llm: agent.llm, prompt });
 ## Code Reduction Benefits
 
 This framework reduces agent development from ~400 lines of boilerplate to ~70 lines of JSON configuration (95% reduction). The template-based approach eliminates duplication while maintaining consistency across all generated agents.
+- Use `gh` CLI or API to create repositories on GitHub
+- Let's ensure that we're creating private repositories in Aktoh-Cyber on GitHub

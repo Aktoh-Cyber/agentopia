@@ -150,7 +150,7 @@ Additional variables for specific templates:
 
 ### Week 3: LangGraph Patterns 🚧 IN PROGRESS
 - [x] Create cc-js-workflow-network - Network pattern complete with mesh/star/hybrid topologies
-- [ ] Create cc-py-workflow-network - Python version of network pattern
+- [x] Create cc-py-workflow-network - Python version of network pattern
 - [ ] Create repositories for remaining LangGraph patterns:
   - [ ] Hierarchical (JS & Python)
   - [ ] Committee (JS & Python)
@@ -234,6 +234,7 @@ See [COOKIECUTTER_GUIDE.md](COOKIECUTTER_GUIDE.md) for detailed lessons and solu
 
 ### ✅ Completed GitHub Repositories (continued)
 7. [cc-js-workflow-network](https://github.com/Aktoh-Cyber/cc-js-workflow-network) - Network pattern with mesh/star/hybrid topologies
+8. [cc-py-workflow-network](https://github.com/Aktoh-Cyber/cc-py-workflow-network) - Python network pattern with peer-to-peer communication
 
 ### 📋 Next Steps
 

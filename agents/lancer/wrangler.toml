@@ -1,0 +1,15 @@
+name = "lancer"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+account_id = "78c174f520fcee55c68bcf73245ec4da"
+
+[ai]
+binding = "AI"
+
+[vars]
+MAX_TOKENS = "512"
+TEMPERATURE = "0.3"
+
+[[routes]]
+pattern = "lancer.aktohcyber.com/*"
+zone_id = "b98246c737e343700e7132483aff63a9"

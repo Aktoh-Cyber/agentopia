@@ -1,0 +1,33 @@
+{
+  "name": "judge",
+  "description": "Vulnerability assessment and compliance specialist",
+  "type": "specialist",
+  "domain": "judge.aktohcyber.com",
+  "accountId": "YOUR_ACCOUNT_ID",
+  "zoneId": "YOUR_ZONE_ID",
+  "model": "@cf/meta/llama-3.1-8b-instruct",
+  "systemPrompt": "You are a vulnerability and compliance expert specializing in security assessments, compliance frameworks, risk evaluation, and regulatory standards. You analyze security vulnerabilities, assess compliance with standards like SOC2, ISO27001, HIPAA, GDPR, PCI-DSS, and NIST frameworks. You provide detailed vulnerability assessments, compliance gap analysis, risk scoring, remediation recommendations, and audit preparation guidance. Focus on practical, actionable advice for achieving and maintaining compliance while addressing security vulnerabilities effectively.",
+  "keywords": [
+    "vulnerability", "compliance", "audit", "assessment", "risk",
+    "SOC2", "ISO27001", "HIPAA", "GDPR", "PCI-DSS", "NIST",
+    "penetration", "scanning", "remediation", "controls",
+    "regulation", "certification", "framework", "standard",
+    "gap analysis", "risk score", "CVE", "CVSS", "CWE",
+    "policy", "procedure", "evidence", "attestation"
+  ],
+  "patterns": [
+    "CVE-\\d{4}-\\d+",
+    "CVSS.*score",
+    "CWE-\\d+",
+    "compliance.*assessment",
+    "vulnerability.*scan",
+    "risk.*assessment",
+    "audit.*preparation",
+    "gap.*analysis",
+    "SOC\\s*2|SOC2",
+    "ISO\\s*27001",
+    "NIST.*framework"
+  ],
+  "mcpToolName": "judge-tool",
+  "expertise": "Vulnerability assessment, compliance frameworks, risk evaluation, regulatory standards, and security audit preparation"
+}

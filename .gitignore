@@ -178,3 +178,6 @@ cython_debug/
 
 .env.local
 .env
+
+# Cookiecutter repositories (maintained separately)
+cookiecutter-repos/

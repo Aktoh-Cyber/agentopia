@@ -151,8 +151,9 @@ Additional variables for specific templates:
 ### Week 3: LangGraph Patterns 🚧 IN PROGRESS
 - [x] Create cc-js-workflow-network - Network pattern complete with mesh/star/hybrid topologies
 - [x] Create cc-py-workflow-network - Python version of network pattern
+- [x] Create cc-js-workflow-hierarchical - Three-tier hierarchy with mid-level supervisors and workers
 - [ ] Create repositories for remaining LangGraph patterns:
-  - [ ] Hierarchical (JS & Python)
+  - [ ] Hierarchical (Python)
   - [ ] Committee (JS & Python)
   - [ ] Reflection (JS & Python)
   - [ ] Pipeline (JS & Python)
@@ -219,8 +220,30 @@ Additional variables for specific templates:
 3. **Jinja2 Escaping**: Use {% raw %} blocks for GitHub Actions YAML in hooks
 4. **Communication Protocols**: Direct, broadcast, and selective messaging patterns
 5. **Loop Prevention**: Essential for network patterns to avoid infinite recursion
+6. **Hierarchical Workflows**: Three-tier architecture with mid-level supervisors managing worker teams
+7. **Worker Configuration**: Separate arrays for supervisors and workers with cross-references
 
 See [COOKIECUTTER_GUIDE.md](COOKIECUTTER_GUIDE.md) for detailed lessons and solutions.
+
+## Progress Summary
+
+### Overall Migration Progress: 45% Complete (9/20 templates)
+
+#### By Language:
+- **JavaScript**: 5/10 templates (50%)
+  - ✅ Router, Specialist, Supervisor, Network, Hierarchical
+  - ⏳ Committee, Reflection, Pipeline, Autonomous
+- **Python**: 4/10 templates (40%)
+  - ✅ Router, Specialist, Supervisor, Network
+  - ⏳ Hierarchical, Committee, Reflection, Pipeline, Autonomous
+
+#### By Pattern Type:
+- **Core Templates**: 6/6 (100%) ✅
+- **LangGraph Patterns**: 3/14 (21%)
+  - ✅ Supervisor (JS & Python)
+  - ✅ Network (JS & Python)
+  - ✅ Hierarchical (JS only)
+  - ⏳ Committee, Reflection, Pipeline, Autonomous (both languages)
 
 ## Current Status
 
@@ -235,13 +258,14 @@ See [COOKIECUTTER_GUIDE.md](COOKIECUTTER_GUIDE.md) for detailed lessons and solu
 ### ✅ Completed GitHub Repositories (continued)
 7. [cc-js-workflow-network](https://github.com/Aktoh-Cyber/cc-js-workflow-network) - Network pattern with mesh/star/hybrid topologies
 8. [cc-py-workflow-network](https://github.com/Aktoh-Cyber/cc-py-workflow-network) - Python network pattern with peer-to-peer communication
+9. [cc-js-workflow-hierarchical](https://github.com/Aktoh-Cyber/cc-js-workflow-hierarchical) - Hierarchical pattern with multi-tier supervision
 
 ### 📋 Next Steps
 
 1. ~~Review and approve this migration plan~~ ✅
 2. ~~Create first repository as proof of concept~~ ✅ 
 3. ~~Core templates migration~~ ✅ Week 2 complete
-4. LangGraph patterns migration - Week 3 (12 templates remaining)
+4. LangGraph patterns migration - Week 3 in progress (11 templates remaining)
 5. Update agent builders to use GitHub repos - Week 4
 
 ---

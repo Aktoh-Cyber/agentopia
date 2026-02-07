@@ -1,10 +1,40 @@
 /**
  * Base Agent Class - Common functionality for all agents with LangChain.js integration
+ *
+ * Updated for langchain 1.x compatibility - uses direct prompts instead of deprecated
+ * LLMChain and BufferMemory (which have been removed in langchain 1.x)
  */
 
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { HumanMessage, SystemMessage, AIMessage } from "@langchain/core/messages";
 import { BaseLLM } from "@langchain/core/language_models/llms";
+
+/**
+ * Simple in-memory buffer for conversation history
+ * Replaces deprecated BufferMemory from langchain
+ */
+class SimpleMemory {
+  constructor(maxMessages = 10) {
+    this.messages = [];
+    this.maxMessages = maxMessages;
+  }
+
+  addMessage(role, content) {
+    this.messages.push({ role, content, timestamp: Date.now() });
+    // Keep only the last N messages
+    if (this.messages.length > this.maxMessages) {
+      this.messages = this.messages.slice(-this.maxMessages);
+    }
+  }
+
+  getHistory() {
+    return this.messages;
+  }
+
+  clear() {
+    this.messages = [];
+  }
+}
 
 /**
  * Custom LLM for Cloudflare Workers AI
@@ -84,11 +114,13 @@ export class BaseAgent {
     // Initialize LangChain components (will be set up when env is available)
     this.llm = null;
     this.memory = null;
+    this.chain = null;
     this.promptTemplate = null;
   }
 
   /**
    * Initialize LangChain components with environment
+   * Updated for langchain 1.x - uses SimpleMemory and direct prompts
    */
   setupLangChainComponents(env) {
     if (!this.config.useLangchain) {
@@ -97,6 +129,9 @@ export class BaseAgent {
 
     // Initialize LLM
     this.llm = new CloudflareWorkersLLM(env, this.config);
+
+    // Initialize simple memory (replaces deprecated BufferMemory)
+    this.memory = new SimpleMemory(10);
 
     // Create prompt template
     this.promptTemplate = ChatPromptTemplate.fromMessages([
@@ -163,6 +198,7 @@ export class BaseAgent {
 
   /**
    * Process question using LangChain
+   * Updated for langchain 1.x - uses direct LLM invocation instead of deprecated LLMChain
    */
   async processQuestionLangChain(env, question) {
     // Initialize components if not already done
@@ -179,13 +215,15 @@ export class BaseAgent {
     }
 
     try {
-      // Format the prompt and invoke the LLM directly
-      const messages = await this.promptTemplate.formatMessages({
-        question: question
-      });
+      // Format the prompt with the question
+      const formattedPrompt = await this.promptTemplate.format({ question });
 
-      const result = await this.llm._generate(messages);
-      const answer = result.generations[0]?.text || 'I apologize, but I could not generate a response.';
+      // Call the LLM directly (replaces deprecated chain.call())
+      const answer = await this.llm._call(formattedPrompt);
+
+      // Store in memory for conversation context
+      this.memory.addMessage('user', question);
+      this.memory.addMessage('assistant', answer);
 
       // Cache the response
       await this.putInCache(env, cacheKey, answer);
@@ -738,7 +776,180 @@ export class BaseAgent {
       }
     }
 
+    // Handle SSE MCP endpoint for CopilotKit integration
+    if (request.method === 'GET' && url.pathname === '/mcp/sse') {
+      return this.handleSSERequest(request, env, url);
+    }
+
+    // Handle SSE message endpoint (POST for sending messages to SSE session)
+    if (request.method === 'POST' && url.pathname === '/mcp/sse/message') {
+      return this.handleSSEMessage(request, env, url);
+    }
+
     // Return 404 for unhandled routes
     return new Response('Not Found', { status: 404 });
+  }
+
+  /**
+   * Handle SSE (Server-Sent Events) MCP connection
+   * This is required for CopilotKit MCP integration
+   */
+  async handleSSERequest(request, env, url) {
+    const corsHeaders = this.getCorsHeaders();
+
+    // Create SSE response headers
+    const sseHeaders = {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      ...corsHeaders,
+    };
+
+    // Create a TransformStream for SSE
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
+
+    // Generate session ID for this SSE connection
+    const sessionId = crypto.randomUUID();
+
+    // Helper to send SSE events
+    const sendEvent = async (event, data) => {
+      const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+      await writer.write(encoder.encode(message));
+    };
+
+    // Start the SSE stream
+    (async () => {
+      try {
+        // Send initial connection event with session info
+        await sendEvent('open', {
+          sessionId,
+          protocol: 'mcp',
+          version: '2024-11-05',
+          capabilities: {
+            tools: true,
+            streaming: true
+          }
+        });
+
+        // Send available tools
+        const toolsList = this.handleMCPToolsList();
+        await sendEvent('tools', toolsList);
+
+        // Keep connection alive with periodic heartbeats
+        const heartbeatInterval = setInterval(async () => {
+          try {
+            await sendEvent('heartbeat', { timestamp: Date.now() });
+          } catch (e) {
+            clearInterval(heartbeatInterval);
+          }
+        }, 30000); // 30 second heartbeat
+
+        // Store session for message handling (in production, use KV or Durable Objects)
+        // For now, we handle messages via the /mcp/sse/message endpoint
+
+      } catch (error) {
+        console.error('SSE stream error:', error);
+        await sendEvent('error', { message: error.message });
+      }
+    })();
+
+    return new Response(readable, {
+      headers: sseHeaders,
+    });
+  }
+
+  /**
+   * Handle incoming SSE messages (tool calls)
+   * CopilotKit sends tool calls via POST to this endpoint
+   */
+  async handleSSEMessage(request, env, url) {
+    const corsHeaders = this.getCorsHeaders();
+
+    try {
+      const body = await request.json();
+      const { method, params, id } = body;
+
+      let result;
+
+      if (method === 'tools/list') {
+        result = this.handleMCPToolsList();
+      } else if (method === 'tools/call') {
+        result = await this.handleMCPToolCall(env, params);
+      } else if (method === 'ping') {
+        result = { pong: true, timestamp: Date.now() };
+      } else {
+        result = {
+          error: {
+            code: -32601,
+            message: `Method not found: ${method}`
+          }
+        };
+      }
+
+      return new Response(JSON.stringify({
+        jsonrpc: '2.0',
+        id,
+        result
+      }), {
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      });
+
+    } catch (error) {
+      console.error('SSE message error:', error);
+      return new Response(JSON.stringify({
+        jsonrpc: '2.0',
+        error: {
+          code: -32603,
+          message: 'Internal error'
+        }
+      }), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      });
+    }
+  }
+
+  /**
+   * Stream a response via SSE for real-time AI responses
+   * Can be used by the SSE connection for streaming chat responses
+   */
+  async *streamResponse(env, question) {
+    // Check cache first
+    const cacheKey = `q:${question.toLowerCase().trim()}`;
+    const cached = await this.getFromCache(env, cacheKey);
+
+    if (cached) {
+      yield { type: 'cached', content: cached };
+      return;
+    }
+
+    // For streaming, we'll yield chunks as they come
+    // Note: Cloudflare Workers AI doesn't support true streaming yet,
+    // so we simulate it by yielding the complete response
+    const result = await this.processQuestion(env, question);
+
+    // Simulate streaming by chunking the response
+    const words = result.answer.split(' ');
+    let chunk = '';
+
+    for (let i = 0; i < words.length; i++) {
+      chunk += (chunk ? ' ' : '') + words[i];
+
+      // Yield every 5 words or at the end
+      if ((i + 1) % 5 === 0 || i === words.length - 1) {
+        yield { type: 'chunk', content: chunk };
+        chunk = '';
+      }
+    }
+
+    yield { type: 'done', cached: result.cached };
   }
 }

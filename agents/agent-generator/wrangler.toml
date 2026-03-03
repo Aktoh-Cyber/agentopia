@@ -16,6 +16,12 @@ MAX_TOKENS = "1024"
 TEMPERATURE = "0.2"
 GITHUB_REPO_OWNER = "Aktoh-Cyber"
 GITHUB_REPO_NAME = "agentopia"
+# Evolve integration
+EVOLVE_BRIDGE_URL = "https://edge-bridge.aktohcyber.com"
+EVOLVE_LLM_ROUTER_URL = "https://llm-router.aktohcyber.com"
+EVOLVE_TRACE_ENABLED = "true"
+
+# Evolve service token - add via: npx wrangler secret put EVOLVE_SERVICE_TOKEN
 
 [[routes]]
 pattern = "generator.mindhive.tech/*"

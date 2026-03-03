@@ -14,6 +14,12 @@ id = "94f2859d6efd4fc8830887d5d797324a"
 [vars]
 MAX_TOKENS = "512"
 TEMPERATURE = "0.3"
+# Evolve integration
+EVOLVE_BRIDGE_URL = "https://edge-bridge.aktohcyber.com"
+EVOLVE_LLM_ROUTER_URL = "https://llm-router.aktohcyber.com"
+EVOLVE_TRACE_ENABLED = "true"
+
+# Evolve service token - add via: npx wrangler secret put EVOLVE_SERVICE_TOKEN
 
 [[routes]]
 pattern = "cybersec-py.mindhive.tech/*"

@@ -239,9 +239,9 @@ Respond with JSON: {{"next_agent": "agent_name", "instructions": "specific instr
                 decision = parser.parse(response)
             except:
                 decision = {
-                    "next_agent": self.config["agents"][0]["name"]
-                    if self.config["agents"]
-                    else "end",
+                    "next_agent": (
+                        self.config["agents"][0]["name"] if self.config["agents"] else "end"
+                    ),
                     "instructions": "Proceed with default processing",
                     "reasoning": "Default routing",
                 }
@@ -412,9 +412,9 @@ Respond with JSON: {{"selected_agent": "agent_name", "confidence": 0-100, "reaso
                 decision = parser.parse(response)
             except:
                 decision = {
-                    "selected_agent": self.config["agents"][0]["name"]
-                    if self.config["agents"]
-                    else "end",
+                    "selected_agent": (
+                        self.config["agents"][0]["name"] if self.config["agents"] else "end"
+                    ),
                     "confidence": 50,
                     "reasoning": "Default routing",
                 }

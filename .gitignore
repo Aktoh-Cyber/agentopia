@@ -1,6 +1,9 @@
 node_modules
-package-lock.json
-package.json
+# Ignore root-level package files but not generators/javascript/
+/package-lock.json
+/package.json
+!generators/javascript/package.json
+!generators/javascript/package-lock.json
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -1,0 +1,33 @@
+{
+  "name": "agent-framework",
+  "version": "1.0.0",
+  "description": "Framework for building and deploying AI agents on Cloudflare Workers with LangChain.js",
+  "type": "module",
+  "main": "agent-builder.js",
+  "bin": {
+    "build-agent": "./build-agent.js"
+  },
+  "scripts": {
+    "build": "node build-agent.js",
+    "test": "node test-framework.js",
+    "install-deps": "npm install langchain @langchain/core @langchain/community @langchain/langgraph"
+  },
+  "dependencies": {
+    "langchain": "^0.1.30",
+    "@langchain/core": "^0.1.52",
+    "@langchain/community": "^0.0.45",
+    "@langchain/langgraph": "^0.0.19"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "cloudflare",
+    "workers",
+    "mcp",
+    "langchain",
+    "langgraph",
+    "cybersecurity"
+  ],
+  "author": "MindHive.tech",
+  "license": "MIT"
+}

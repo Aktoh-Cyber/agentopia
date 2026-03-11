@@ -118,38 +118,38 @@ jobs:
         if: matrix.language == 'python'
         run: |
           if [ "${{ matrix.agent-type }}" = "specialist" ]; then
-            CONFIG="generators/python/configs/judge-specialist.json"
+            CONFIG="configs/judge-specialist.json"
           else
-            CONFIG="generators/python/configs/infosec-router.json"
+            CONFIG="configs/infosec-router.json"
           fi
-          
+
           cd generators/python
           uv run python agent_builder.py "$CONFIG" "../../test-${{ matrix.agent-type }}-py"
-          
+
           # Validate generated files
           test -f "../../test-${{ matrix.agent-type }}-py/$(basename $CONFIG .json)/src/entry.py"
           test -f "../../test-${{ matrix.agent-type }}-py/$(basename $CONFIG .json)/wrangler.toml"
           test -f "../../test-${{ matrix.agent-type }}-py/$(basename $CONFIG .json)/.agent-metadata.json"
-          
+
           # Validate Python syntax
           uv run python -m py_compile "../../test-${{ matrix.agent-type }}-py/$(basename $CONFIG .json)/src/entry.py"
 
-      - name: Test JavaScript agent generation  
+      - name: Test JavaScript agent generation
         if: matrix.language == 'javascript'
         run: |
           if [ "${{ matrix.agent-type }}" = "specialist" ]; then
-            CONFIG="generators/javascript/configs/judge-specialist.json"
+            CONFIG="configs/judge-specialist.json"
           else
-            CONFIG="generators/javascript/configs/infosec-router.json"
+            CONFIG="configs/infosec-router.json"
           fi
-          
+
           cd generators/javascript
           node build-agent.js "$CONFIG" "../../test-${{ matrix.agent-type }}-js"
-          
+
           # Validate generated files
           test -f "../../test-${{ matrix.agent-type }}-js/$(basename $CONFIG .json)/src/index.js"
           test -f "../../test-${{ matrix.agent-type }}-js/$(basename $CONFIG .json)/wrangler.toml"
-          
+
           # Validate JavaScript syntax
           node -c "../../test-${{ matrix.agent-type }}-js/$(basename $CONFIG .json)/src/index.js"
 

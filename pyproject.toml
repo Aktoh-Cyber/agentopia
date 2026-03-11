@@ -116,6 +116,7 @@ strict_equality = true
 exclude = [
     "agents/",
     "generated-agents/",
+    "generators/python/templates/",
 ]
 
 [tool.ruff]

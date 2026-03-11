@@ -1,0 +1,18 @@
+{
+  "name": "{{domain.split('.')[0]}}",
+  "version": "1.0.0",
+  "description": "Supervisor pattern demonstration with multiple specialized agents",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "wrangler": "^3.0.0",
+    "langchain": "^0.1.30",
+    "@langchain/core": "^0.1.52",
+    "@langchain/community": "^0.0.45",
+    "@langchain/langgraph": "^0.0.19"
+  }
+}

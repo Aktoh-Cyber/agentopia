@@ -5,7 +5,7 @@ Designed to work with Cloudflare Workers Python runtime
 """
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 # For accessing JavaScript APIs via FFI
@@ -45,7 +45,7 @@ class CloudflareWorkersLLM(BaseLLM if LANGCHAIN_COMPAT_AVAILABLE else object):
         self.temperature = temperature
         self.max_tokens = max_tokens
 
-    async def agenerate(self, messages: List[BaseMessage], **kwargs: Any) -> str:
+    async def agenerate(self, messages: list[BaseMessage], **kwargs: Any) -> str:
         """Generate response using Cloudflare AI"""
         try:
             # Convert messages to format expected by Cloudflare AI

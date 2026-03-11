@@ -1,0 +1,16 @@
+{
+  "name": "{{domain.split('.')[0]}}",
+  "version": "1.0.0",
+  "description": "Specialized AI for offensive security, red teaming, and penetration testing methodologies",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@langchain/community": "^1.1.11",
+    "@langchain/core": "^1.1.19",
+    "langchain": "^1.2.17",
+    "wrangler": "^3.0.0"
+  }
+}

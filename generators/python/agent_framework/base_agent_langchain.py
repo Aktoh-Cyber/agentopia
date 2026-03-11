@@ -4,7 +4,7 @@ Provides familiar LangChain API while using only Python standard library
 """
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 # For accessing JavaScript APIs via FFI
@@ -16,18 +16,12 @@ from workers import Response
 
 # Import our LangChain-compatible interfaces
 from .langchain_compat import (
-    AIMessage,
     BaseLLM,
     BaseMessage,
     ChatPromptTemplate,
-    CloudflareLLM,
     ConversationBufferMemory,
-    HumanMessage,
-    JsonOutputParser,
     LLMChain,
-    PromptTemplate,
     StrOutputParser,
-    SystemMessage,
 )
 
 
@@ -40,7 +34,7 @@ class CloudflareWorkersLLM(BaseLLM):
         self.temperature = temperature
         self.max_tokens = max_tokens
 
-    async def agenerate(self, messages: List[BaseMessage], **kwargs: Any) -> str:
+    async def agenerate(self, messages: list[BaseMessage], **kwargs: Any) -> str:
         """Generate response using Cloudflare AI"""
         try:
             # Convert messages to format expected by Cloudflare AI

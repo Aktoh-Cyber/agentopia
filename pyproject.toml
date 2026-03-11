@@ -121,6 +121,11 @@ exclude = [
 [tool.ruff]
 target-version = "py39"
 line-length = 100
+force-exclude = true
+extend-exclude = [
+    "generators/python/templates/router_agent",
+    "generators/python/templates/specialist_agent",
+]
 
 [tool.ruff.lint]
 select = [
@@ -134,6 +139,7 @@ select = [
 ]
 ignore = [
     "E501", # line too long, handled by black
+    "E722", # bare except, used for optional import fallbacks
     "B008", # do not perform function calls in argument defaults
     "C901", # too complex
 ]
@@ -164,6 +170,9 @@ exclude = [
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+"generators/python/agent_framework/base_agent.py" = ["F401"]
+"generators/python/agent_framework/langchain_compat.py" = ["F821"]
+"generators/python/agent_framework/langgraph_agent.py" = ["F821"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

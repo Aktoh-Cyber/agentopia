@@ -4,26 +4,20 @@ Supports all 24 architectural patterns from DEEP_AGENT_PATTERNS.md
 Using only Python standard library with LangChain-compatible interface
 """
 
-import asyncio
 import json
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 from .base_agent import BaseAgent
 
 # Import our LangChain-compatible interfaces
 from .langchain_compat import (
     AIMessage,
-    BaseChain,
-    BaseLLM,
     BaseMessage,
     ChatPromptTemplate,
     HumanMessage,
     JsonOutputParser,
-    LLMChain,
-    PromptTemplate,
-    SystemMessage,
 )
 
 
@@ -40,12 +34,12 @@ class NodeType(Enum):
 class AgentState:
     """State container for LangGraph workflows"""
 
-    messages: List[BaseMessage] = field(default_factory=list)
+    messages: list[BaseMessage] = field(default_factory=list)
     task: str = ""
-    context: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
     current_agent: str = "start"
     iteration: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def add_message(self, message: BaseMessage) -> None:
         """Add a message to the state"""
@@ -55,7 +49,7 @@ class AgentState:
         """Update context with key-value pair"""
         self.context[key] = value
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             "messages": [{"role": m.role, "content": m.content} for m in self.messages],
@@ -72,9 +66,9 @@ class StateGraph:
 
     def __init__(self, state_class: type = AgentState):
         self.state_class = state_class
-        self.nodes: Dict[str, Callable] = {}
-        self.edges: Dict[str, Union[str, Dict[str, str]]] = {}
-        self.conditional_edges: Dict[str, tuple] = {}
+        self.nodes: dict[str, Callable] = {}
+        self.edges: dict[str, Union[str, dict[str, str]]] = {}
+        self.conditional_edges: dict[str, tuple] = {}
         self.entry_point: Optional[str] = None
 
     def add_node(self, name: str, func: Callable) -> None:
@@ -86,7 +80,7 @@ class StateGraph:
         self.edges[from_node] = to_node
 
     def add_conditional_edges(
-        self, from_node: str, path_func: Callable, path_map: Dict[str, str]
+        self, from_node: str, path_func: Callable, path_map: dict[str, str]
     ) -> None:
         """Add conditional edges based on function output"""
         self.conditional_edges[from_node] = (path_func, path_map)
@@ -106,7 +100,7 @@ class CompiledGraph:
     def __init__(self, graph: StateGraph):
         self.graph = graph
 
-    async def invoke(self, initial_state: Dict[str, Any]) -> Dict[str, Any]:
+    async def invoke(self, initial_state: dict[str, Any]) -> dict[str, Any]:
         """Execute the graph with initial state"""
         # Create state instance
         state = self.graph.state_class(**initial_state)
@@ -147,7 +141,7 @@ class CompiledGraph:
 class LangGraphAgent(BaseAgent):
     """LangGraph Agent supporting multiple architectural patterns"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         super().__init__(config)
 
         # Extended configuration for LangGraph
@@ -162,7 +156,7 @@ class LangGraphAgent(BaseAgent):
 
         # Initialize graph components
         self.graph: Optional[StateGraph] = None
-        self.agents: Dict[str, Dict[str, Any]] = {}
+        self.agents: dict[str, dict[str, Any]] = {}
         self.compiled_graph: Optional[CompiledGraph] = None
 
     def setup_langgraph_components(self, env):
@@ -209,7 +203,7 @@ class LangGraphAgent(BaseAgent):
                 [
                     (
                         "system",
-                        """You are a supervisor agent managing multiple specialized agents. 
+                        """You are a supervisor agent managing multiple specialized agents.
 Based on the current task and context, decide which agent should handle the next step.
 
 Available agents: {available_agents}
@@ -701,7 +695,7 @@ Respond with JSON: {{"satisfactory": true/false, "feedback": "your feedback", "c
                         [
                             (
                                 "system",
-                                """You are {agent_name} in a processing pipeline. 
+                                """You are {agent_name} in a processing pipeline.
 Your role: {expertise}
 Pipeline stage: {stage} of {total_stages}
 
@@ -919,7 +913,7 @@ Respond with JSON: {{"action": "chosen_action", "reasoning": "why", "output": "a
             {"autonomous": "autonomous", "end": "end"},
         )
 
-    async def process_question_langgraph(self, env, question: str) -> Dict[str, Any]:
+    async def process_question_langgraph(self, env, question: str) -> dict[str, Any]:
         """Process question using LangGraph workflow"""
         # Initialize components if not already done
         if not self.compiled_graph:
@@ -959,7 +953,7 @@ Respond with JSON: {{"action": "chosen_action", "reasoning": "why", "output": "a
             # Fallback to base agent processing
             return await super().process_question(env, question)
 
-    async def process_question(self, env, question: str) -> Dict[str, Any]:
+    async def process_question(self, env, question: str) -> dict[str, Any]:
         """Process question using appropriate method"""
         if self.config.get("pattern") and self.config["pattern"] != "basic":
             return await self.process_question_langgraph(env, question)

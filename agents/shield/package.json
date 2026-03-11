@@ -1,0 +1,15 @@
+{
+  "name": "{{domain.split('.')[0]}}",
+  "version": "1.0.0",
+  "description": "Specialized AI for blue team operations, incident response, threat hunting, and defensive security",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@langchain/core": "^1.1.19",
+    "langchain": "^1.2.17",
+    "wrangler": "^3.0.0"
+  }
+}

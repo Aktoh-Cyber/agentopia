@@ -7,7 +7,7 @@ import json
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Protocol, Union
+from typing import Any, Optional, Union
 
 
 @dataclass
@@ -15,7 +15,7 @@ class BaseMessage:
     """Base class for messages"""
 
     content: str
-    additional_kwargs: Dict[str, Any] = field(default_factory=dict)
+    additional_kwargs: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -48,7 +48,7 @@ class BasePromptTemplate(ABC):
         pass
 
     @abstractmethod
-    def format_messages(self, **kwargs: Any) -> List[BaseMessage]:
+    def format_messages(self, **kwargs: Any) -> list[BaseMessage]:
         """Format as messages"""
         pass
 
@@ -56,11 +56,11 @@ class BasePromptTemplate(ABC):
 class PromptTemplate(BasePromptTemplate):
     """Simple prompt template with variable substitution"""
 
-    def __init__(self, template: str, input_variables: Optional[List[str]] = None):
+    def __init__(self, template: str, input_variables: Optional[list[str]] = None):
         self.template = template
         self.input_variables = input_variables or self._extract_variables(template)
 
-    def _extract_variables(self, template: str) -> List[str]:
+    def _extract_variables(self, template: str) -> list[str]:
         """Extract variables from template string"""
         return list(set(re.findall(r"\{(\w+)\}", template)))
 
@@ -68,7 +68,7 @@ class PromptTemplate(BasePromptTemplate):
         """Format the template with provided variables"""
         return self.template.format(**kwargs)
 
-    def format_messages(self, **kwargs: Any) -> List[BaseMessage]:
+    def format_messages(self, **kwargs: Any) -> list[BaseMessage]:
         """Format as a single human message"""
         return [HumanMessage(content=self.format(**kwargs))]
 
@@ -76,7 +76,7 @@ class PromptTemplate(BasePromptTemplate):
 class ChatPromptTemplate(BasePromptTemplate):
     """Chat-style prompt template"""
 
-    def __init__(self, messages: List[Union[BaseMessage, tuple]]):
+    def __init__(self, messages: list[Union[BaseMessage, tuple]]):
         self.messages = []
         for msg in messages:
             if isinstance(msg, BaseMessage):
@@ -91,7 +91,7 @@ class ChatPromptTemplate(BasePromptTemplate):
                     self.messages.append(AIMessage(content=content))
 
     @classmethod
-    def from_messages(cls, messages: List[Union[BaseMessage, tuple]]) -> "ChatPromptTemplate":
+    def from_messages(cls, messages: list[Union[BaseMessage, tuple]]) -> "ChatPromptTemplate":
         """Create from messages"""
         return cls(messages)
 
@@ -100,7 +100,7 @@ class ChatPromptTemplate(BasePromptTemplate):
         formatted_messages = self.format_messages(**kwargs)
         return "\n\n".join([f"{msg.role}: {msg.content}" for msg in formatted_messages])
 
-    def format_messages(self, **kwargs: Any) -> List[BaseMessage]:
+    def format_messages(self, **kwargs: Any) -> list[BaseMessage]:
         """Format messages with variables"""
         formatted = []
         for msg in self.messages:
@@ -123,11 +123,11 @@ class BaseLLM(ABC):
     """Base LLM interface"""
 
     @abstractmethod
-    async def agenerate(self, messages: List[BaseMessage], **kwargs: Any) -> str:
+    async def agenerate(self, messages: list[BaseMessage], **kwargs: Any) -> str:
         """Generate response from messages"""
         pass
 
-    async def ainvoke(self, input: Union[str, List[BaseMessage]], **kwargs: Any) -> str:
+    async def ainvoke(self, input: Union[str, list[BaseMessage]], **kwargs: Any) -> str:
         """Invoke the LLM"""
         if isinstance(input, str):
             messages = [HumanMessage(content=input)]
@@ -151,7 +151,7 @@ class CloudflareLLM(BaseLLM):
         self.max_tokens = max_tokens
         self.model_kwargs = kwargs
 
-    async def agenerate(self, messages: List[BaseMessage], **kwargs: Any) -> str:
+    async def agenerate(self, messages: list[BaseMessage], **kwargs: Any) -> str:
         """Generate using Cloudflare AI"""
         # This will be implemented in the actual agent to use env.AI
         # For now, return a placeholder
@@ -166,7 +166,7 @@ class BaseChain(ABC):
         """Run the chain"""
         pass
 
-    async def ainvoke(self, input: Dict[str, Any], **kwargs: Any) -> Dict[str, Any]:
+    async def ainvoke(self, input: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
         """Invoke the chain"""
         result = await self.arun(**input, **kwargs)
         return {"output": result}
@@ -188,7 +188,7 @@ class LLMChain(BaseChain):
 class SimpleSequentialChain(BaseChain):
     """Chain that runs multiple chains in sequence"""
 
-    def __init__(self, chains: List[BaseChain]):
+    def __init__(self, chains: list[BaseChain]):
         self.chains = chains
 
     async def arun(self, **kwargs: Any) -> Any:
@@ -205,7 +205,7 @@ class ConversationBufferMemory:
     def __init__(self, memory_key: str = "history", return_messages: bool = True):
         self.memory_key = memory_key
         self.return_messages = return_messages
-        self.messages: List[BaseMessage] = []
+        self.messages: list[BaseMessage] = []
 
     def add_user_message(self, message: str):
         """Add user message to memory"""
@@ -219,11 +219,11 @@ class ConversationBufferMemory:
         """Clear memory"""
         self.messages = []
 
-    def get_messages(self) -> List[BaseMessage]:
+    def get_messages(self) -> list[BaseMessage]:
         """Get all messages"""
         return self.messages.copy()
 
-    def load_memory_variables(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def load_memory_variables(self, inputs: dict[str, Any]) -> dict[str, Any]:
         """Load memory variables"""
         if self.return_messages:
             return {self.memory_key: self.messages}
@@ -253,7 +253,7 @@ class StrOutputParser(BaseOutputParser):
 class JsonOutputParser(BaseOutputParser):
     """JSON output parser"""
 
-    def parse(self, text: str) -> Dict[str, Any]:
+    def parse(self, text: str) -> dict[str, Any]:
         """Parse JSON from text"""
         try:
             # Try to extract JSON from markdown code blocks
@@ -271,7 +271,7 @@ class AgentExecutor:
     def __init__(
         self,
         agent: "BaseAgent",
-        tools: List[Any],
+        tools: list[Any],
         memory: Optional[ConversationBufferMemory] = None,
     ):
         self.agent = agent

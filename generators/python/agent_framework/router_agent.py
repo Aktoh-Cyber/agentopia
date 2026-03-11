@@ -5,7 +5,7 @@ Python implementation for Cloudflare Workers
 """
 
 import json
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 # JavaScript console for logging
 from js import console
@@ -20,13 +20,8 @@ from .tool_registry import DynamicMCPClient, ToolRegistry
 if LANGCHAIN_COMPAT_AVAILABLE:
     from .langchain_compat import (
         BaseChain,
-        BaseMessage,
         ChatPromptTemplate,
-        HumanMessage,
         JsonOutputParser,
-        LLMChain,
-        PromptTemplate,
-        SystemMessage,
     )
 
 
@@ -44,7 +39,7 @@ class RouterChain(BaseChain if LANGCHAIN_COMPAT_AVAILABLE else object):
                 (
                     "system",
                     """You are a routing assistant that analyzes questions and determines which specialized agent should handle them.
-            
+
 Available specialized agents:
 {agents_summary}
 

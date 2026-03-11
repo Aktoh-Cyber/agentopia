@@ -1,0 +1,24 @@
+{
+  "id": "evolve-llm-router",
+  "name": "Evolve LLM Router - 3-Tier Inference Mesh",
+  "description": "Routes LLM inference through Evolve 3-tier routing mesh (local -> edge -> cloud)",
+  "endpoint": "${EVOLVE_LLM_ROUTER_URL}",
+  "mcpTool": "evolve_llm_complete",
+  "keywords": [
+    "llm", "inference", "completion", "model", "route"
+  ],
+  "patterns": [
+    "llm\\..*",
+    "inference\\..*",
+    "model\\..*"
+  ],
+  "priority": 80,
+  "auth": { "type": "bearer", "env": "EVOLVE_SERVICE_TOKEN" },
+  "headers": {
+    "X-Agentopia-Agent": "${AGENT_ID}",
+    "X-Request-Id": "${REQUEST_ID}",
+    "X-Evolve-Trace-Id": "${TRACE_ID}"
+  },
+  "timeout_ms": 60000,
+  "cost_tier": "medium"
+}

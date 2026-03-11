@@ -1,0 +1,25 @@
+{
+  "id": "evolve-bridge",
+  "name": "Evolve Edge Bridge - Synapse Tool Router",
+  "description": "Routes tool invocations through Evolve Edge Bridge to Synapse distributed fabric for network scanning, vulnerability assessment, and security hardening",
+  "endpoint": "${EVOLVE_BRIDGE_URL}",
+  "mcpTool": "synapse_tool_invoke",
+  "keywords": [
+    "synapse", "nmap", "scan", "network", "vulnerability",
+    "node", "fabric", "harden", "assess", "evolve",
+    "port scan", "service enumeration", "discovery"
+  ],
+  "patterns": [
+    "synapse_.*",
+    "evolve_.*",
+    "node\\..*"
+  ],
+  "priority": 85,
+  "auth": { "type": "bearer", "env": "EVOLVE_SERVICE_TOKEN" },
+  "headers": {
+    "X-Agentopia-Agent": "${AGENT_ID}",
+    "X-Request-Id": "${REQUEST_ID}"
+  },
+  "timeout_ms": 30000,
+  "fallback": "direct-mcp"
+}

@@ -48,6 +48,24 @@
           "compliance.*(requirement|audit|framework)"
         ],
         "priority": 10
+      },
+      {
+        "id": "evolve-bridge",
+        "name": "Evolve Edge Bridge - Synapse Tool Router",
+        "description": "Routes tool invocations through Evolve Edge Bridge to Synapse distributed fabric for network scanning, vulnerability assessment, and security hardening",
+        "endpoint": "${EVOLVE_BRIDGE_URL}",
+        "mcpTool": "synapse_tool_invoke",
+        "keywords": [
+          "synapse", "nmap", "scan", "network scan", "port scan",
+          "service enumeration", "node", "fabric", "harden",
+          "assess", "evolve", "vulnerability scan"
+        ],
+        "patterns": [
+          "synapse_.*",
+          "evolve_.*",
+          "node\\..*"
+        ],
+        "priority": 85
       }
     ]
   }

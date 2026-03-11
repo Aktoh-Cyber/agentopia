@@ -156,11 +156,19 @@ export class RouterAgent extends BaseAgent {
   }
 
   /**
-   * Setup LangChain components with router chain
+   * Setup LangChain components with router chain.
+   * Also initializes the Evolve Edge Bridge client if env vars are present.
    */
   setupLangChainComponents(env) {
     super.setupLangChainComponents(env);
-    
+
+    // Initialize Evolve Edge Bridge for cross-system tool routing
+    if (env.EVOLVE_BRIDGE_URL && env.EVOLVE_SERVICE_TOKEN) {
+      this.mcpClient.initEvolveBridge(env, {
+        agentId: this.config.mcpToolName || this.config.name,
+      });
+    }
+
     if (this.config.useLangchain && this.llm) {
       this.routerChain = new RouterChain(this.llm, this.registry, this.mcpClient);
     }
@@ -245,6 +253,13 @@ Question: {question}
    * Process question using legacy routing
    */
   async processQuestionLegacy(env, question) {
+    // Initialize Evolve bridge if not already done (legacy path)
+    if (!this.mcpClient.evolveBridge && env.EVOLVE_BRIDGE_URL && env.EVOLVE_SERVICE_TOKEN) {
+      this.mcpClient.initEvolveBridge(env, {
+        agentId: this.config.mcpToolName || this.config.name,
+      });
+    }
+
     // Check cache first
     const cacheKey = `q:${question.toLowerCase().trim()}`;
     const cached = await this.getFromCache(env, cacheKey);
@@ -325,11 +340,11 @@ If a question is better suited for a specialized agent, mention it in your respo
   }
 
   /**
-   * Override MCP tools list to include routing capabilities
+   * Override MCP tools list to include routing capabilities and Evolve bridge tools
    */
   handleMCPToolsList() {
     const baseTool = super.handleMCPToolsList();
-    
+
     // Add a tool for listing available agents
     baseTool.tools.push({
       name: 'list_available_agents',
@@ -341,11 +356,34 @@ If a question is better suited for a specialized agent, mention it in your respo
       }
     });
 
+    // Advertise Evolve bridge tools when the bridge is configured
+    if (this.mcpClient.evolveBridge && this.mcpClient.evolveBridge.isConfigured()) {
+      baseTool.tools.push({
+        name: 'synapse_tool_invoke',
+        description: 'Invoke a Synapse tool via the Evolve Edge Bridge (network scanning, vulnerability assessment, security hardening)',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            tool: {
+              type: 'string',
+              description: 'Synapse tool name (e.g. synapse_nmap_scan, synapse_vuln_assess)'
+            },
+            arguments: {
+              type: 'object',
+              description: 'Arguments to pass to the Synapse tool'
+            }
+          },
+          required: ['tool']
+        }
+      });
+    }
+
     return baseTool;
   }
 
   /**
-   * Handle additional MCP tool calls
+   * Handle additional MCP tool calls.
+   * If the tool name matches an Evolve pattern, route it via the Edge Bridge.
    */
   async handleMCPToolCall(env, params) {
     if (params?.name === 'list_available_agents') {
@@ -356,6 +394,26 @@ If a question is better suited for a specialized agent, mention it in your respo
           text: JSON.stringify(tools, null, 2)
         }]
       };
+    }
+
+    // Route Evolve-pattern tool calls through the bridge
+    if (params?.name) {
+      // Initialize bridge if needed
+      if (!this.mcpClient.evolveBridge && env.EVOLVE_BRIDGE_URL && env.EVOLVE_SERVICE_TOKEN) {
+        this.mcpClient.initEvolveBridge(env, {
+          agentId: this.config.mcpToolName || this.config.name,
+        });
+      }
+
+      const evolveResult = await this.mcpClient.askEvolveTool(params.name, params.arguments || {});
+      if (evolveResult) {
+        return {
+          content: [{
+            type: 'text',
+            text: evolveResult.answer
+          }]
+        };
+      }
     }
 
     return super.handleMCPToolCall(env, params);

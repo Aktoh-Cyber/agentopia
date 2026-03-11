@@ -76,10 +76,16 @@
       ]
     }
   ],
+  "evolveBridge": {
+    "enabled": true,
+    "patterns": ["synapse_*", "evolve_*", "node.*"],
+    "comment": "When EVOLVE_BRIDGE_URL and EVOLVE_SERVICE_TOKEN env vars are set, tool calls matching these patterns are routed to the Evolve Edge Bridge"
+  },
   "keywords": [
-    "security", "infosec", "cybersecurity", "vulnerability", "compliance", 
+    "security", "infosec", "cybersecurity", "vulnerability", "compliance",
     "pentest", "red team", "exploit", "reconnaissance", "discovery",
-    "blue team", "incident", "response", "defense", "monitoring"
+    "blue team", "incident", "response", "defense", "monitoring",
+    "synapse", "nmap", "scan", "evolve"
   ],
   "patterns": [
     "\\b(security|infosec|cybersecurity)\\b",

@@ -32,16 +32,21 @@ class PythonAgentBuilder:
 
         agent_type = config.get("type")
         langgraph_patterns = [
-            'supervisor', 'network', 'hierarchical', 'committee', 
-            'reflection', 'pipeline', 'autonomous'
+            "supervisor",
+            "network",
+            "hierarchical",
+            "committee",
+            "reflection",
+            "pipeline",
+            "autonomous",
         ]
-        
+
         if agent_type == "router" and not config.get("registry"):
             errors.append("registry is required for router agents")
 
         if agent_type == "specialist" and not config.get("keywords"):
             errors.append("keywords are required for specialist agents")
-            
+
         if agent_type in langgraph_patterns:
             if not config.get("pattern"):
                 errors.append("pattern is required for LangGraph agents")
@@ -65,8 +70,13 @@ class PythonAgentBuilder:
         }
 
         langgraph_patterns = [
-            'supervisor', 'network', 'hierarchical', 'committee', 
-            'reflection', 'pipeline', 'autonomous'
+            "supervisor",
+            "network",
+            "hierarchical",
+            "committee",
+            "reflection",
+            "pipeline",
+            "autonomous",
         ]
 
         if agent_type == "router":
@@ -74,13 +84,15 @@ class PythonAgentBuilder:
         elif agent_type == "specialist":
             defaults.update({"type": "specialist", "keywords": [], "patterns": [], "priority": 5})
         elif agent_type in langgraph_patterns:
-            defaults.update({
-                "type": agent_type,
-                "pattern": agent_type,
-                "maxIterations": 10,
-                "agents": [],
-                "useLangchain": True
-            })
+            defaults.update(
+                {
+                    "type": agent_type,
+                    "pattern": agent_type,
+                    "maxIterations": 10,
+                    "agents": [],
+                    "useLangchain": True,
+                }
+            )
 
         return defaults
 
@@ -120,10 +132,15 @@ class PythonAgentBuilder:
         # Determine template directory based on agent type
         agent_type = config["type"]
         langgraph_patterns = [
-            'supervisor', 'network', 'hierarchical', 'committee', 
-            'reflection', 'pipeline', 'autonomous'
+            "supervisor",
+            "network",
+            "hierarchical",
+            "committee",
+            "reflection",
+            "pipeline",
+            "autonomous",
         ]
-        
+
         # LangGraph patterns don't need template directories - they use direct generation
         if agent_type not in langgraph_patterns:
             template_dir = self.templates_dir / f"{agent_type}_agent"
@@ -168,17 +185,22 @@ class PythonAgentBuilder:
     def generate_entry_py(self, context: dict[str, Any]) -> str:
         """Generate entry.py file"""
         agent_type = context["type"]
-        
+
         # LangGraph patterns
         langgraph_patterns = [
-            'supervisor', 'network', 'hierarchical', 'committee', 
-            'reflection', 'pipeline', 'autonomous'
+            "supervisor",
+            "network",
+            "hierarchical",
+            "committee",
+            "reflection",
+            "pipeline",
+            "autonomous",
         ]
-        
+
         if agent_type in langgraph_patterns:
             import_line = "from agent_framework.langgraph_agent import LangGraphAgent"
             agent_class = "LangGraphAgent"
-            agents_json = json.dumps(context.get('agents', []), indent=2)
+            agents_json = json.dumps(context.get("agents", []), indent=2)
             config_extra = f"""    'pattern': '{context['pattern']}',
     'maxIterations': {context.get('maxIterations', 10)},
     'agents': {agents_json},

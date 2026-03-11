@@ -16,42 +16,48 @@ from workers import Response
 
 # Import our LangChain-compatible interfaces
 from .langchain_compat import (
-    BaseMessage, SystemMessage, HumanMessage, AIMessage,
-    ChatPromptTemplate, PromptTemplate,
-    BaseLLM, CloudflareLLM, LLMChain,
+    BaseMessage,
+    SystemMessage,
+    HumanMessage,
+    AIMessage,
+    ChatPromptTemplate,
+    PromptTemplate,
+    BaseLLM,
+    CloudflareLLM,
+    LLMChain,
     ConversationBufferMemory,
-    StrOutputParser, JsonOutputParser
+    StrOutputParser,
+    JsonOutputParser,
 )
 
 
 class CloudflareWorkersLLM(BaseLLM):
     """LLM implementation for Cloudflare Workers"""
-    
+
     def __init__(self, env, model: str, temperature: float = 0.3, max_tokens: int = 512):
         self.env = env
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
-    
+
     async def agenerate(self, messages: List[BaseMessage], **kwargs: Any) -> str:
         """Generate response using Cloudflare AI"""
         try:
             # Convert messages to format expected by Cloudflare AI
             cf_messages = []
             for msg in messages:
-                cf_messages.append({
-                    "role": msg.role,
-                    "content": msg.content
-                })
-            
+                cf_messages.append({"role": msg.role, "content": msg.content})
+
             # Convert to JavaScript format
             js_messages = to_js(cf_messages)
-            ai_params = to_js({
-                "messages": js_messages,
-                "max_tokens": kwargs.get("max_tokens", self.max_tokens),
-                "temperature": kwargs.get("temperature", self.temperature),
-            })
-            
+            ai_params = to_js(
+                {
+                    "messages": js_messages,
+                    "max_tokens": kwargs.get("max_tokens", self.max_tokens),
+                    "temperature": kwargs.get("temperature", self.temperature),
+                }
+            )
+
             response = await self.env.AI.run(self.model, ai_params)
             return (
                 response.response
@@ -64,7 +70,7 @@ class CloudflareWorkersLLM(BaseLLM):
 
 class LangChainBaseAgent:
     """Base agent class with LangChain-style interface"""
-    
+
     def __init__(self, config: dict[str, Any]):
         self.config = {
             "name": config.get("name", "AI Agent"),
@@ -86,16 +92,16 @@ class LangChainBaseAgent:
             ),
             **config,
         }
-        
+
         # Initialize LangChain-style components
         self.memory = ConversationBufferMemory(return_messages=True)
         self.output_parser = StrOutputParser()
-        
+
         # These will be initialized when we have access to env
         self.llm: Optional[CloudflareWorkersLLM] = None
         self.chain: Optional[LLMChain] = None
         self.prompt_template: Optional[ChatPromptTemplate] = None
-    
+
     def setup_langchain_components(self, env):
         """Initialize LangChain components with environment"""
         # Initialize LLM
@@ -103,18 +109,17 @@ class LangChainBaseAgent:
             env=env,
             model=self.config["model"],
             temperature=self.config["temperature"],
-            max_tokens=self.config["max_tokens"]
+            max_tokens=self.config["max_tokens"],
         )
-        
+
         # Create prompt template
-        self.prompt_template = ChatPromptTemplate.from_messages([
-            ("system", self.config["system_prompt"]),
-            ("human", "{question}")
-        ])
-        
+        self.prompt_template = ChatPromptTemplate.from_messages(
+            [("system", self.config["system_prompt"]), ("human", "{question}")]
+        )
+
         # Create chain
         self.chain = LLMChain(llm=self.llm, prompt=self.prompt_template)
-    
+
     def get_cors_headers(self) -> dict[str, str]:
         """Standard CORS headers"""
         return {
@@ -122,11 +127,11 @@ class LangChainBaseAgent:
             "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
         }
-    
+
     def handle_options(self) -> Response:
         """Handle preflight requests"""
         return Response("", headers=self.get_cors_headers())
-    
+
     async def get_from_cache(self, env, key: str) -> Optional[str]:
         """Get from cache if enabled"""
         if not self.config["cache_enabled"] or not hasattr(env, "CACHE"):
@@ -136,7 +141,7 @@ class LangChainBaseAgent:
         except Exception as e:
             console.error(f"Cache get error: {e}")
             return None
-    
+
     async def put_in_cache(self, env, key: str, value: str) -> None:
         """Put in cache if enabled"""
         if not self.config["cache_enabled"] or not hasattr(env, "CACHE"):
@@ -145,43 +150,43 @@ class LangChainBaseAgent:
             await env.CACHE.put(key, value, expirationTtl=self.config["cache_ttl"])
         except Exception as e:
             console.error(f"Cache put error: {e}")
-    
+
     async def process_question(self, env, question: str) -> dict[str, Any]:
         """Process a question using LangChain-style components"""
         # Initialize components if not already done
         if self.llm is None:
             self.setup_langchain_components(env)
-        
+
         # Check cache first
         cache_key = f"q:{question.lower().strip()}"
         cached = await self.get_from_cache(env, cache_key)
-        
+
         if cached:
             return {"answer": cached, "cached": True}
-        
+
         # Add to memory
         self.memory.add_user_message(question)
-        
+
         # Run chain
         try:
             answer = await self.chain.arun(question=question)
-            
+
             # Parse output if needed
             parsed_answer = self.output_parser.parse(answer)
-            
+
             # Add AI response to memory
             self.memory.add_ai_message(parsed_answer)
-            
+
             # Cache the response
             await self.put_in_cache(env, cache_key, parsed_answer)
-            
+
             return {"answer": parsed_answer, "cached": False}
         except Exception as e:
             console.error(f"Error processing question: {e}")
             error_msg = "I apologize, but I encountered an error processing your question."
             self.memory.add_ai_message(error_msg)
             return {"answer": error_msg, "cached": False}
-    
+
     def handle_mcp_tools_list(self) -> dict[str, Any]:
         """Handle MCP tools/list request"""
         return {
@@ -202,38 +207,38 @@ class LangChainBaseAgent:
                 }
             ]
         }
-    
+
     async def handle_mcp_tool_call(self, env, params: dict[str, Any]) -> dict[str, Any]:
         """Handle MCP tools/call request"""
         question = params.get("arguments", {}).get("question")
-        
+
         if not question:
             return {"error": {"code": -32602, "message": "Invalid params: question is required"}}
-        
+
         result = await self.process_question(env, question)
-        
+
         return {"content": [{"type": "text", "text": result["answer"]}]}
-    
+
     async def handle_mcp_request(self, env, request_data: dict[str, Any]) -> dict[str, Any]:
         """Handle MCP requests"""
         method = request_data.get("method")
-        
+
         if method == "tools/list":
             return self.handle_mcp_tools_list()
-        
+
         if method == "tools/call":
             tool_name = request_data.get("params", {}).get("name")
             if tool_name == self.config["mcp_tool_name"]:
                 return await self.handle_mcp_tool_call(env, request_data.get("params", {}))
-        
+
         return {"error": {"code": -32601, "message": "Method not found"}}
-    
+
     def get_home_page(self) -> str:
         """Get HTML page template"""
         examples_html = "\n                    ".join(
             f"<li>{ex}</li>" for ex in self.config["examples"]
         )
-        
+
         return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -278,7 +283,7 @@ class LangChainBaseAgent:
     {self.get_client_script()}
 </body>
 </html>"""
-    
+
     def get_styles(self) -> str:
         """Get CSS styles"""
         return """<style>
@@ -471,7 +476,7 @@ class LangChainBaseAgent:
             text-decoration: underline;
         }
     </style>"""
-    
+
     def get_client_script(self) -> str:
         """Get client-side JavaScript"""
         return f"""<script>
@@ -554,24 +559,24 @@ class LangChainBaseAgent:
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }}
     </script>"""
-    
+
     async def fetch(self, request, env):
         """Main request handler"""
         # Parse URL and method
         url = urlparse(request.url)
         method = request.method
         cors_headers = self.get_cors_headers()
-        
+
         # Handle preflight requests
         if method == "OPTIONS":
             return self.handle_options()
-        
+
         # Serve homepage
         if method == "GET" and url.path == "/":
             return Response(
                 self.get_home_page(), headers={"Content-Type": "text/html", **cors_headers}
             )
-        
+
         # Handle MCP requests
         if method == "POST" and url.path == "/mcp":
             try:
@@ -588,26 +593,26 @@ class LangChainBaseAgent:
                     status=500,
                     headers={"Content-Type": "application/json", **cors_headers},
                 )
-        
+
         # Handle API requests
         if method == "POST" and url.path == "/api/ask":
             try:
                 request_data = await request.json()
                 question = request_data.get("question", "").strip()
-                
+
                 if not question:
                     return Response(
                         json.dumps({"error": "Question is required"}),
                         status=400,
                         headers={"Content-Type": "application/json", **cors_headers},
                     )
-                
+
                 result = await self.process_question(env, question)
-                
+
                 return Response(
                     json.dumps(result), headers={"Content-Type": "application/json", **cors_headers}
                 )
-                
+
             except Exception as e:
                 console.error(f"Error processing request: {e}")
                 return Response(
@@ -615,6 +620,6 @@ class LangChainBaseAgent:
                     status=500,
                     headers={"Content-Type": "application/json", **cors_headers},
                 )
-        
+
         # Return 404 for unhandled routes
         return Response("Not Found", status=404)

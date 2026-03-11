@@ -18,12 +18,19 @@ from workers import Response
 # Import our LangChain-compatible interfaces
 try:
     from .langchain_compat import (
-        BaseMessage, SystemMessage, HumanMessage, AIMessage,
-        ChatPromptTemplate, PromptTemplate,
-        BaseLLM, LLMChain,
+        BaseMessage,
+        SystemMessage,
+        HumanMessage,
+        AIMessage,
+        ChatPromptTemplate,
+        PromptTemplate,
+        BaseLLM,
+        LLMChain,
         ConversationBufferMemory,
-        StrOutputParser, JsonOutputParser
+        StrOutputParser,
+        JsonOutputParser,
     )
+
     LANGCHAIN_COMPAT_AVAILABLE = True
 except ImportError:
     LANGCHAIN_COMPAT_AVAILABLE = False
@@ -31,32 +38,31 @@ except ImportError:
 
 class CloudflareWorkersLLM(BaseLLM if LANGCHAIN_COMPAT_AVAILABLE else object):
     """LLM implementation for Cloudflare Workers"""
-    
+
     def __init__(self, env, model: str, temperature: float = 0.3, max_tokens: int = 512):
         self.env = env
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
-    
+
     async def agenerate(self, messages: List[BaseMessage], **kwargs: Any) -> str:
         """Generate response using Cloudflare AI"""
         try:
             # Convert messages to format expected by Cloudflare AI
             cf_messages = []
             for msg in messages:
-                cf_messages.append({
-                    "role": msg.role,
-                    "content": msg.content
-                })
-            
+                cf_messages.append({"role": msg.role, "content": msg.content})
+
             # Convert to JavaScript format
             js_messages = to_js(cf_messages)
-            ai_params = to_js({
-                "messages": js_messages,
-                "max_tokens": kwargs.get("max_tokens", self.max_tokens),
-                "temperature": kwargs.get("temperature", self.temperature),
-            })
-            
+            ai_params = to_js(
+                {
+                    "messages": js_messages,
+                    "max_tokens": kwargs.get("max_tokens", self.max_tokens),
+                    "temperature": kwargs.get("temperature", self.temperature),
+                }
+            )
+
             response = await self.env.AI.run(self.model, ai_params)
             return (
                 response.response
@@ -92,7 +98,7 @@ class BaseAgent:
             "use_langchain": config.get("useLangchain", True),  # Enable LangChain by default
             **config,
         }
-        
+
         # Initialize LangChain-style components if available and enabled
         if LANGCHAIN_COMPAT_AVAILABLE and self.config["use_langchain"]:
             self.memory = ConversationBufferMemory(return_messages=True)
@@ -106,26 +112,25 @@ class BaseAgent:
             self.llm = None
             self.chain = None
             self.prompt_template = None
-    
+
     def setup_langchain_components(self, env):
         """Initialize LangChain components with environment"""
         if not LANGCHAIN_COMPAT_AVAILABLE or not self.config["use_langchain"]:
             return
-        
+
         # Initialize LLM
         self.llm = CloudflareWorkersLLM(
             env=env,
             model=self.config["model"],
             temperature=self.config["temperature"],
-            max_tokens=self.config["max_tokens"]
+            max_tokens=self.config["max_tokens"],
         )
-        
+
         # Create prompt template
-        self.prompt_template = ChatPromptTemplate.from_messages([
-            ("system", self.config["system_prompt"]),
-            ("human", "{question}")
-        ])
-        
+        self.prompt_template = ChatPromptTemplate.from_messages(
+            [("system", self.config["system_prompt"]), ("human", "{question}")]
+        )
+
         # Create chain
         self.chain = LLMChain(llm=self.llm, prompt=self.prompt_template)
 
@@ -193,30 +198,30 @@ class BaseAgent:
         # Initialize components if not already done
         if self.llm is None:
             self.setup_langchain_components(env)
-        
+
         # Check cache first
         cache_key = f"q:{question.lower().strip()}"
         cached = await self.get_from_cache(env, cache_key)
-        
+
         if cached:
             return {"answer": cached, "cached": True}
-        
+
         # Add to memory
         self.memory.add_user_message(question)
-        
+
         # Run chain
         try:
             answer = await self.chain.arun(question=question)
-            
+
             # Parse output if needed
             parsed_answer = self.output_parser.parse(answer)
-            
+
             # Add AI response to memory
             self.memory.add_ai_message(parsed_answer)
-            
+
             # Cache the response
             await self.put_in_cache(env, cache_key, parsed_answer)
-            
+
             return {"answer": parsed_answer, "cached": False}
         except Exception as e:
             console.error(f"Error processing question: {e}")

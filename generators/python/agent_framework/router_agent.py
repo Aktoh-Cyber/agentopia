@@ -19,24 +19,31 @@ from .tool_registry import DynamicMCPClient, ToolRegistry
 # Import LangChain-compatible interfaces if available
 if LANGCHAIN_COMPAT_AVAILABLE:
     from .langchain_compat import (
-        BaseMessage, SystemMessage, HumanMessage,
-        ChatPromptTemplate, PromptTemplate,
-        BaseChain, LLMChain,
-        JsonOutputParser
+        BaseMessage,
+        SystemMessage,
+        HumanMessage,
+        ChatPromptTemplate,
+        PromptTemplate,
+        BaseChain,
+        LLMChain,
+        JsonOutputParser,
     )
 
 
 class RouterChain(BaseChain if LANGCHAIN_COMPAT_AVAILABLE else object):
     """Chain that routes questions to specialized agents"""
-    
+
     def __init__(self, llm, registry: ToolRegistry, mcp_client: DynamicMCPClient):
         self.llm = llm
         self.registry = registry
         self.mcp_client = mcp_client
-        
+
         # Create routing analysis prompt
-        self.routing_prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a routing assistant that analyzes questions and determines which specialized agent should handle them.
+        self.routing_prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    """You are a routing assistant that analyzes questions and determines which specialized agent should handle them.
             
 Available specialized agents:
 {agents_summary}
@@ -47,25 +54,24 @@ Analyze the question and respond with JSON in this format:
     "agent_name": "agent name if routing, null otherwise",
     "confidence": 0-100,
     "reasoning": "brief explanation"
-}}"""),
-            ("human", "{question}")
-        ])
-        
+}}""",
+                ),
+                ("human", "{question}"),
+            ]
+        )
+
         self.parser = JsonOutputParser()
-    
+
     async def arun(self, question: str, **kwargs: Any) -> dict[str, Any]:
         """Analyze question and route if appropriate"""
         # Get agents summary
         agents_summary = self._get_agents_summary()
-        
+
         # Run routing analysis
         analysis = await self.llm.ainvoke(
-            self.routing_prompt.format_messages(
-                agents_summary=agents_summary,
-                question=question
-            )
+            self.routing_prompt.format_messages(agents_summary=agents_summary, question=question)
         )
-        
+
         # Parse result
         try:
             routing_decision = self.parser.parse(analysis)
@@ -75,9 +81,9 @@ Analyze the question and respond with JSON in this format:
                 "should_route": False,
                 "agent_name": None,
                 "confidence": 0,
-                "reasoning": "Failed to parse routing decision"
+                "reasoning": "Failed to parse routing decision",
             }
-        
+
         # If we should route and have high confidence, try the specialized agent
         if routing_decision.get("should_route") and routing_decision.get("confidence", 0) > 70:
             try:
@@ -87,11 +93,11 @@ Analyze the question and respond with JSON in this format:
                         "routed": True,
                         "answer": tool_result["answer"],
                         "source": tool_result["source"],
-                        "routing_decision": routing_decision
+                        "routing_decision": routing_decision,
                     }
             except Exception as e:
                 console.error(f"Failed to contact specialized agent: {e}")
-        
+
         # Otherwise, use tool registry scoring as fallback
         try:
             tool_result = await self.mcp_client.ask_tool(question)
@@ -100,26 +106,25 @@ Analyze the question and respond with JSON in this format:
                     "routed": True,
                     "answer": tool_result["answer"],
                     "source": tool_result["source"],
-                    "routing_decision": routing_decision
+                    "routing_decision": routing_decision,
                 }
         except Exception as e:
             console.error(f"Tool registry routing failed: {e}")
-        
-        return {
-            "routed": False,
-            "routing_decision": routing_decision
-        }
-    
+
+        return {"routed": False, "routing_decision": routing_decision}
+
     def _get_agents_summary(self) -> str:
         """Get formatted summary of available agents"""
         tools = self.registry.get_all_tools()
         if not tools:
             return "No specialized agents available."
-        
-        return "\n".join([
-            f"- {tool['name']}: {tool['description']} (keywords: {', '.join(tool.get('keywords', [])[:5])})"
-            for tool in tools
-        ])
+
+        return "\n".join(
+            [
+                f"- {tool['name']}: {tool['description']} (keywords: {', '.join(tool.get('keywords', [])[:5])})"
+                for tool in tools
+            ]
+        )
 
 
 class RouterAgent(BaseAgent):
@@ -132,14 +137,14 @@ class RouterAgent(BaseAgent):
         registry_config = config.get("registry", {"tools": []})
         self.registry = ToolRegistry(registry_config)
         self.mcp_client = DynamicMCPClient(self.registry)
-        
+
         # Initialize router chain if LangChain is available
         self.router_chain: Optional[RouterChain] = None
 
     def setup_langchain_components(self, env):
         """Initialize LangChain components with routing chain"""
         super().setup_langchain_components(env)
-        
+
         if LANGCHAIN_COMPAT_AVAILABLE and self.config["use_langchain"] and self.llm:
             self.router_chain = RouterChain(self.llm, self.registry, self.mcp_client)
 
@@ -148,65 +153,72 @@ class RouterAgent(BaseAgent):
         # Initialize components if not already done
         if self.llm is None:
             self.setup_langchain_components(env)
-        
+
         # Check cache first
         cache_key = f"q:{question.lower().strip()}"
         cached = await self.get_from_cache(env, cache_key)
-        
+
         if cached:
             return {"answer": cached, "cached": True}
-        
+
         # Add to memory
         self.memory.add_user_message(question)
-        
+
         answer = None
         source = self.config["name"]
-        
+
         # Try routing with LangChain
         if self.router_chain:
             try:
                 routing_result = await self.router_chain.arun(question=question)
-                
+
                 if routing_result.get("routed"):
                     answer = routing_result["answer"]
                     source = routing_result["source"]
-                    
+
                     # Add attribution
                     answer = f"{answer}\n\n*[This response was provided by {source}]*"
-                    
+
                     # Log routing decision if available
                     if routing_result.get("routing_decision"):
-                        console.log(f"Routing decision: {json.dumps(routing_result['routing_decision'])}")
-                
+                        console.log(
+                            f"Routing decision: {json.dumps(routing_result['routing_decision'])}"
+                        )
+
             except Exception as e:
                 console.error(f"LangChain routing failed: {e}")
-        
+
         # If no routing or it failed, use local AI with enhanced prompt
         if not answer:
             # Create enhanced prompt with routing awareness
-            enhanced_prompt = ChatPromptTemplate.from_messages([
-                ("system", f"""{self.config['system_prompt']}
+            enhanced_prompt = ChatPromptTemplate.from_messages(
+                [
+                    (
+                        "system",
+                        f"""{self.config['system_prompt']}
 
 Note: You have access to specialized agents for certain topics:
 {self.get_tool_summary()}
-If a question is better suited for a specialized agent, mention it in your response."""),
-                ("human", "{question}")
-            ])
-            
+If a question is better suited for a specialized agent, mention it in your response.""",
+                    ),
+                    ("human", "{question}"),
+                ]
+            )
+
             # Run the chain
             answer = await self.chain.llm.ainvoke(
                 enhanced_prompt.format_messages(question=question)
             )
-            
+
             # Parse output
             answer = self.output_parser.parse(answer)
-        
+
         # Add AI response to memory
         self.memory.add_ai_message(answer)
-        
+
         # Cache the response
         await self.put_in_cache(env, cache_key, answer)
-        
+
         return {"answer": answer, "cached": False, "source": source}
 
     async def process_question_legacy(self, env, question: str) -> dict[str, Any]:

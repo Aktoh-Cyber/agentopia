@@ -13,20 +13,20 @@ from js import console
 # Import Workers-specific modules
 from workers import Response
 
-from .base_agent import BaseAgent, LANGCHAIN_COMPAT_AVAILABLE
+from .base_agent import LANGCHAIN_COMPAT_AVAILABLE, BaseAgent
 from .tool_registry import DynamicMCPClient, ToolRegistry
 
 # Import LangChain-compatible interfaces if available
 if LANGCHAIN_COMPAT_AVAILABLE:
     from .langchain_compat import (
-        BaseMessage,
-        SystemMessage,
-        HumanMessage,
-        ChatPromptTemplate,
-        PromptTemplate,
         BaseChain,
-        LLMChain,
+        BaseMessage,
+        ChatPromptTemplate,
+        HumanMessage,
         JsonOutputParser,
+        LLMChain,
+        PromptTemplate,
+        SystemMessage,
     )
 
 

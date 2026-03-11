@@ -4,26 +4,27 @@ Supports all 24 architectural patterns from DEEP_AGENT_PATTERNS.md
 Using only Python standard library with LangChain-compatible interface
 """
 
-import json
 import asyncio
-from typing import Any, Dict, List, Optional, Callable, Union
+import json
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any, Callable, Dict, List, Optional, Union
+
+from .base_agent import BaseAgent
 
 # Import our LangChain-compatible interfaces
 from .langchain_compat import (
-    BaseMessage,
-    SystemMessage,
-    HumanMessage,
     AIMessage,
-    ChatPromptTemplate,
-    PromptTemplate,
-    BaseLLM,
     BaseChain,
-    LLMChain,
+    BaseLLM,
+    BaseMessage,
+    ChatPromptTemplate,
+    HumanMessage,
     JsonOutputParser,
+    LLMChain,
+    PromptTemplate,
+    SystemMessage,
 )
-from .base_agent import BaseAgent
 
 
 class NodeType(Enum):

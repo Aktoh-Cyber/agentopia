@@ -120,7 +120,7 @@ jobs:
           if [ "${{ matrix.agent-type }}" = "specialist" ]; then
             CONFIG="generators/python/configs/judge-specialist.json"
           else
-            CONFIG="generators/python/configs/cybersec-router.json"
+            CONFIG="generators/python/configs/infosec-router.json"
           fi
           
           cd generators/python
@@ -140,7 +140,7 @@ jobs:
           if [ "${{ matrix.agent-type }}" = "specialist" ]; then
             CONFIG="generators/javascript/configs/judge-specialist.json"
           else
-            CONFIG="generators/javascript/configs/cybersec-router.json"
+            CONFIG="generators/javascript/configs/infosec-router.json"
           fi
           
           cd generators/javascript

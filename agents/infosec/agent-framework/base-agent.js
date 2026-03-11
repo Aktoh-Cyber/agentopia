@@ -776,6 +776,11 @@ export class BaseAgent {
       }
     }
 
+    // Handle AG-UI protocol endpoint for CopilotKit coagent integration
+    if (request.method === 'POST' && url.pathname === '/ag-ui/run') {
+      return this.handleAgUIRun(request, env);
+    }
+
     // Handle SSE MCP endpoint for CopilotKit integration
     if (request.method === 'GET' && url.pathname === '/mcp/sse') {
       return this.handleSSERequest(request, env, url);
@@ -788,6 +793,178 @@ export class BaseAgent {
 
     // Return 404 for unhandled routes
     return new Response('Not Found', { status: 404 });
+  }
+
+  /**
+   * Handle AG-UI protocol run endpoint for CopilotKit coagent integration.
+   * Accepts RunAgentInput, streams AG-UI events (SSE) back to the CopilotKit runtime.
+   * This allows the agent to run its own LLM and stream results directly.
+   */
+  async handleAgUIRun(request, env) {
+    const corsHeaders = this.getCorsHeaders();
+
+    const sseHeaders = {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      ...corsHeaders,
+    };
+
+    let input;
+    try {
+      input = await request.json();
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
+    const threadId = input.threadId || crypto.randomUUID();
+    const runId = input.runId || crypto.randomUUID();
+    const messages = input.messages || [];
+    const context = input.context || [];
+    const state = input.state || {};
+
+    // Extract the user's question from messages
+    const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
+    const question = lastUserMessage?.content || '';
+
+    if (!question) {
+      return new Response(JSON.stringify({ error: 'No user message found' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
+    // Build context-enriched prompt from agent context values
+    let contextPrompt = '';
+    if (context.length > 0) {
+      const contextParts = context
+        .filter(c => c.value != null)
+        .map(c => `${c.description}: ${typeof c.value === 'string' ? c.value : JSON.stringify(c.value)}`);
+      if (contextParts.length > 0) {
+        contextPrompt = '\n\nContext provided by the user:\n' + contextParts.join('\n');
+      }
+    }
+
+    // Build conversation history for the LLM
+    const historyMessages = messages
+      .filter(m => m.role === 'user' || m.role === 'assistant')
+      .slice(-10) // Keep last 10 messages for context window
+      .map(m => ({ role: m.role, content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) }));
+
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
+
+    const sendEvent = async (data) => {
+      await writer.write(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+    };
+
+    // Run the agent asynchronously
+    (async () => {
+      try {
+        // 1. RUN_STARTED
+        await sendEvent({
+          type: 'RUN_STARTED',
+          threadId,
+          runId,
+        });
+
+        // 2. STATE_SNAPSHOT — send current agent state
+        const agentState = {
+          agentName: this.config.name,
+          agentDescription: this.config.description,
+          ...state,
+        };
+        await sendEvent({
+          type: 'STATE_SNAPSHOT',
+          snapshot: agentState,
+        });
+
+        // 3. Generate the AI response
+        const messageId = `msg-${crypto.randomUUID()}`;
+
+        await sendEvent({
+          type: 'TEXT_MESSAGE_START',
+          messageId,
+          role: 'assistant',
+        });
+
+        // Build enriched question with context
+        const enrichedQuestion = contextPrompt
+          ? question + contextPrompt
+          : question;
+
+        // Use processQuestion which respects subclass overrides (e.g. infosec routing)
+        let fullResponse;
+        try {
+          const result = await this.processQuestion(env, enrichedQuestion);
+          // processQuestion returns { answer, cached } or a string
+          fullResponse = typeof result === 'string' ? result : (result.answer || JSON.stringify(result));
+        } catch (aiError) {
+          console.error('AI call failed:', aiError);
+          fullResponse = 'I encountered an error processing your request. Please try again.';
+        }
+
+        // 4. Stream the response in chunks (word-based streaming)
+        const words = fullResponse.split(' ');
+        const chunkSize = 3; // Stream 3 words at a time
+        for (let i = 0; i < words.length; i += chunkSize) {
+          const chunk = words.slice(i, i + chunkSize).join(' ');
+          const delta = i === 0 ? chunk : ' ' + chunk;
+          await sendEvent({
+            type: 'TEXT_MESSAGE_CONTENT',
+            messageId,
+            delta,
+          });
+        }
+
+        // 5. TEXT_MESSAGE_END
+        await sendEvent({
+          type: 'TEXT_MESSAGE_END',
+          messageId,
+        });
+
+        // 6. STATE_SNAPSHOT — updated state after response
+        await sendEvent({
+          type: 'STATE_SNAPSHOT',
+          snapshot: {
+            ...agentState,
+            lastResponse: fullResponse.substring(0, 200),
+            messageCount: messages.length + 1,
+          },
+        });
+
+        // 7. RUN_FINISHED
+        await sendEvent({
+          type: 'RUN_FINISHED',
+          threadId,
+          runId,
+        });
+
+        // Cache the response
+        const cacheKey = `q:${question.toLowerCase().trim()}`;
+        await this.putInCache(env, cacheKey, fullResponse);
+
+      } catch (error) {
+        console.error('AG-UI run error:', error);
+        try {
+          await sendEvent({
+            type: 'RUN_ERROR',
+            message: error.message || 'Internal agent error',
+            code: 'AGENT_ERROR',
+          });
+        } catch { /* writer may be closed */ }
+      } finally {
+        try {
+          await writer.close();
+        } catch { /* already closed */ }
+      }
+    })();
+
+    return new Response(readable, { headers: sseHeaders });
   }
 
   /**

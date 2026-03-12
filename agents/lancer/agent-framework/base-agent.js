@@ -232,10 +232,17 @@ export class BaseAgent {
 
   /**
    * Authenticate request. Returns { authenticated, payload, error }.
+   * Accepts either a Cognito JWT or a service API key (X-Service-Key header).
    */
-  async authenticateRequest(request) {
+  async authenticateRequest(request, env) {
     if (!this.jwtRequired) {
       return { authenticated: true, payload: null, error: null };
+    }
+
+    // Check for service-to-service API key (used by CopilotKit runtime)
+    const serviceKey = request.headers.get('X-Service-Key');
+    if (serviceKey && env?.SERVICE_API_KEY && serviceKey === env.SERVICE_API_KEY) {
+      return { authenticated: true, payload: { sub: 'service', type: 'service-key' }, error: null };
     }
 
     const token = this.extractBearerToken(request);
@@ -847,7 +854,7 @@ export class BaseAgent {
     // ── JWT Authentication for protected routes ──
     const protectedPaths = ['/mcp', '/api/ask', '/ag-ui/run', '/mcp/sse', '/mcp/sse/message'];
     if (protectedPaths.includes(url.pathname)) {
-      const auth = await this.authenticateRequest(request);
+      const auth = await this.authenticateRequest(request, env);
       if (!auth.authenticated) {
         return new Response(JSON.stringify({ error: auth.error }), {
           status: 401,

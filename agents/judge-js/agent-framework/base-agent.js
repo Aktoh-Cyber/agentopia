@@ -116,6 +116,139 @@ export class BaseAgent {
     this.memory = null;
     this.chain = null;
     this.promptTemplate = null;
+
+    // Cognito JWT configuration
+    this.cognitoUserPoolId = config.cognitoUserPoolId || 'us-east-1_eBwEzy44B';
+    this.cognitoClientId = config.cognitoClientId || '325iut5ehq07vjl3e27dphk62h';
+    this.cognitoRegion = config.cognitoRegion || 'us-east-1';
+    this.jwtRequired = config.jwtRequired !== false; // Require JWT by default
+  }
+
+  // ── Cognito JWT Verification ──────────────────────────────────────────
+
+  /**
+   * Fetch and cache JWKS from Cognito
+   */
+  async getJwks() {
+    // Cache JWKS in-memory (shared across requests within the same isolate)
+    if (BaseAgent._jwksCache && BaseAgent._jwksCacheExpiry > Date.now()) {
+      return BaseAgent._jwksCache;
+    }
+    const jwksUrl = `https://cognito-idp.${this.cognitoRegion}.amazonaws.com/${this.cognitoUserPoolId}/.well-known/jwks.json`;
+    const resp = await fetch(jwksUrl);
+    if (!resp.ok) throw new Error(`Failed to fetch JWKS: ${resp.status}`);
+    const jwks = await resp.json();
+    BaseAgent._jwksCache = jwks;
+    BaseAgent._jwksCacheExpiry = Date.now() + 3600_000; // Cache for 1 hour
+    return jwks;
+  }
+
+  /**
+   * Base64url decode
+   */
+  base64urlDecode(str) {
+    str = str.replace(/-/g, '+').replace(/_/g, '/');
+    while (str.length % 4) str += '=';
+    const binary = atob(str);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
+  /**
+   * Import RSA public key from JWK for verification
+   */
+  async importKey(jwk) {
+    return crypto.subtle.importKey(
+      'jwk',
+      { kty: jwk.kty, n: jwk.n, e: jwk.e, alg: 'RS256', ext: true },
+      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
+  }
+
+  /**
+   * Verify a Cognito JWT token. Returns decoded payload or null.
+   */
+  async verifyJwt(token) {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+
+      const headerB64 = parts[0];
+      const payloadB64 = parts[1];
+      const signatureB64 = parts[2];
+
+      const header = JSON.parse(new TextDecoder().decode(this.base64urlDecode(headerB64)));
+      const payload = JSON.parse(new TextDecoder().decode(this.base64urlDecode(payloadB64)));
+
+      // Check algorithm
+      if (header.alg !== 'RS256') return null;
+
+      // Check expiry
+      if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+
+      // Check issuer
+      const expectedIssuer = `https://cognito-idp.${this.cognitoRegion}.amazonaws.com/${this.cognitoUserPoolId}`;
+      if (payload.iss !== expectedIssuer) return null;
+
+      // Check audience (client_id) — id tokens use 'aud', access tokens use 'client_id'
+      const tokenClientId = payload.aud || payload.client_id;
+      if (tokenClientId !== this.cognitoClientId) return null;
+
+      // Find matching key
+      const jwks = await this.getJwks();
+      const key = jwks.keys.find(k => k.kid === header.kid);
+      if (!key) return null;
+
+      // Verify signature
+      const cryptoKey = await this.importKey(key);
+      const signatureBytes = this.base64urlDecode(signatureB64);
+      const dataBytes = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+
+      const valid = await crypto.subtle.verify(
+        'RSASSA-PKCS1-v1_5',
+        cryptoKey,
+        signatureBytes,
+        dataBytes
+      );
+
+      return valid ? payload : null;
+    } catch (err) {
+      console.error('JWT verification failed:', err.message);
+      return null;
+    }
+  }
+
+  /**
+   * Extract Bearer token from Authorization header
+   */
+  extractBearerToken(request) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+    return authHeader.slice(7);
+  }
+
+  /**
+   * Authenticate request. Returns { authenticated, payload, error }.
+   */
+  async authenticateRequest(request) {
+    if (!this.jwtRequired) {
+      return { authenticated: true, payload: null, error: null };
+    }
+
+    const token = this.extractBearerToken(request);
+    if (!token) {
+      return { authenticated: false, payload: null, error: 'Missing Authorization header' };
+    }
+
+    const payload = await this.verifyJwt(token);
+    if (!payload) {
+      return { authenticated: false, payload: null, error: 'Invalid or expired token' };
+    }
+
+    return { authenticated: true, payload, error: null };
   }
 
   /**
@@ -711,6 +844,20 @@ export class BaseAgent {
       });
     }
 
+    // ── JWT Authentication for protected routes ──
+    const protectedPaths = ['/mcp', '/api/ask', '/ag-ui/run', '/mcp/sse', '/mcp/sse/message'];
+    if (protectedPaths.includes(url.pathname)) {
+      const auth = await this.authenticateRequest(request);
+      if (!auth.authenticated) {
+        return new Response(JSON.stringify({ error: auth.error }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json', 'WWW-Authenticate': 'Bearer', ...corsHeaders },
+        });
+      }
+      // Attach user info to request for downstream handlers
+      request._jwtPayload = auth.payload;
+    }
+
     // Handle MCP requests
     if (request.method === 'POST' && url.pathname === '/mcp') {
       try {
@@ -1130,3 +1277,7 @@ export class BaseAgent {
     yield { type: 'done', cached: result.cached };
   }
 }
+
+// Static JWKS cache (shared across instances within the same isolate)
+BaseAgent._jwksCache = null;
+BaseAgent._jwksCacheExpiry = 0;

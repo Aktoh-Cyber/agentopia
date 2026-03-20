@@ -179,6 +179,22 @@ export default {
 // Deploy all agents
 const deployedAgents = agents.map(agent => createAgent(agent));
 
+// --- Synapse Controlplane DNS ---
+// Points controlplane.aktohcyber.com to the horsemen-infra ALB
+const infraStackName = config.get("infraStack") || "";
+const synapseControlPlaneAlbDns = config.get("synapseControlPlaneAlbDns") || "";
+
+if (synapseControlPlaneAlbDns) {
+  const controlplaneDns = new cloudflare.Record("synapse-controlplane-dns", {
+    zoneId: zoneId,
+    name: "controlplane",
+    content: synapseControlPlaneAlbDns,
+    type: "CNAME",
+    proxied: true,
+    ttl: 1,
+  });
+}
+
 // Export the deployed domains
 export const deployedDomains = deployedAgents.map((agent, index) => ({
   name: agents[index].displayName,

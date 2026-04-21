@@ -1,0 +1,17 @@
+{
+  "name": "agentopia-agent-tests",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:scout": "vitest run scout.test.js",
+    "test:shield": "vitest run shield.test.js",
+    "test:lancer": "vitest run lancer.test.js",
+    "test:infosec": "vitest run infosec.test.js"
+  },
+  "devDependencies": {
+    "vitest": "^3.1.1"
+  }
+}

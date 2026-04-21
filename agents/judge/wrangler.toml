@@ -21,6 +21,14 @@ EVOLVE_TRACE_ENABLED = "true"
 
 # Evolve service token - add via: npx wrangler secret put EVOLVE_SERVICE_TOKEN
 
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1002"
+
+  [ratelimits.simple]
+  limit = 100
+  period = 60
+
 [[routes]]
 pattern = "judge-py.mindhive.tech/*"
 zone_id = "4f8b8a0bd742d7872f75b8144b3851f8"

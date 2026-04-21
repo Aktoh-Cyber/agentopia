@@ -98,6 +98,18 @@ You have deep knowledge of:
 // Export default handler
 export default {
   async fetch(request, env) {
+    // Rate limiting: 100 requests per minute per IP
+    if (env.RATE_LIMITER) {
+      const clientIP = request.headers.get('cf-connecting-ip') || 'unknown';
+      const { success } = await env.RATE_LIMITER.limit({ key: clientIP });
+      if (!success) {
+        return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }), {
+          status: 429,
+          headers: { 'Content-Type': 'application/json', 'Retry-After': '60' }
+        });
+      }
+    }
+
     const agent = new InfoSecSupervisorAgent();
     return agent.fetch(request, env);
   }

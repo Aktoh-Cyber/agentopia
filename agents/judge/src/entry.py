@@ -45,4 +45,19 @@ judgevulnerabilitycomplianceexpertagent = BaseAgent(config)
 # Export the fetch handler
 async def on_fetch(request, env):
     """Main request handler for Cloudflare Workers"""
+    # Rate limiting: 100 requests per minute per IP
+    if hasattr(env, 'RATE_LIMITER'):
+        client_ip = request.headers.get('cf-connecting-ip', 'unknown')
+        result = await env.RATE_LIMITER.limit(key=client_ip)
+        if not result.success:
+            from js import Response as JsResponse, Headers
+            headers = Headers.new()
+            headers.set('Content-Type', 'application/json')
+            headers.set('Retry-After', '60')
+            return JsResponse.new(
+                '{"error": "Rate limit exceeded. Please try again later."}',
+                status=429,
+                headers=headers
+            )
+
     return await judgevulnerabilitycomplianceexpertagent.fetch(request, env)

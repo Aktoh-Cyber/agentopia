@@ -16,6 +16,14 @@ EVOLVE_TRACE_ENABLED = "true"
 
 # Evolve service token - add via: npx wrangler secret put EVOLVE_SERVICE_TOKEN
 
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1004"
+
+  [ratelimits.simple]
+  limit = 100
+  period = 60
+
 [[routes]]
 pattern = "lancer.aktohcyber.com/*"
 zone_id = "b98246c737e343700e7132483aff63a9"

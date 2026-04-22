@@ -57,7 +57,7 @@ You have deep knowledge of:
   }
 
   // Override processQuestion to add routing logic
-  async processQuestion(question, env) {
+  async processQuestion(env, question) {
     // Analyze the question for routing keywords
     const routingKeywords = {
       judge: ['cve', 'vulnerability', 'compliance', 'nist', 'soc2', 'gdpr', 'pci', 'iso27001', 'cvss', 'audit'],
@@ -84,7 +84,7 @@ You have deep knowledge of:
       : '';
 
     // Use base class to process the question
-    const response = await super.processQuestion(question, env);
+    const response = await super.processQuestion(env, question);
 
     // Append routing suggestion if applicable
     if (typeof response === 'string' && routingSuggestion) {

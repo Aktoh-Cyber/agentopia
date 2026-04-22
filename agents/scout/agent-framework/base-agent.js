@@ -851,6 +851,18 @@ export class BaseAgent {
       });
     }
 
+    // Health check endpoint (unauthenticated)
+    if (request.method === 'GET' && url.pathname === '/health') {
+      return new Response(JSON.stringify({
+        status: 'healthy',
+        name: this.config.name,
+        timestamp: new Date().toISOString(),
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
     // ── JWT Authentication for protected routes ──
     const protectedPaths = ['/mcp', '/api/ask', '/ag-ui/run', '/mcp/sse', '/mcp/sse/message'];
     if (protectedPaths.includes(url.pathname)) {

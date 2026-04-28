@@ -29,7 +29,7 @@ NPM := npm
 
 # Make settings
 .DEFAULT_GOAL := help
-.PHONY: help setup install dev-setup format lint type-check test qa clean
+.PHONY: help setup install dev-setup format lint type-check test qa clean secrets-scan
 .PHONY: generate-agent generate-python generate-javascript list-configs
 .PHONY: deploy-agent deploy-all update-deps info
 
@@ -133,7 +133,13 @@ test-javascript: ## Run JavaScript tests
 	@echo "$(BLUE)  JavaScript tests:$(NC)"
 	@cd $(JS_GEN_DIR) && $(NPM) test 2>/dev/null || echo "    No tests configured"
 
-qa: format lint type-check test ## Run all quality checks
+secrets-scan: ## Scan for secrets with gitleaks
+	@echo "$(YELLOW)🔐 Scanning for secrets...$(NC)"
+	@command -v gitleaks >/dev/null 2>&1 || { printf "$(RED)Error: gitleaks not found. Install with: brew install gitleaks$(NC)\n"; exit 1; }
+	@gitleaks detect --source . --no-git -v || true
+	@echo "$(GREEN)✅ Secret scan complete$(NC)"
+
+qa: format lint type-check test secrets-scan ## Run all quality checks
 
 ##@ Agent Generation
 

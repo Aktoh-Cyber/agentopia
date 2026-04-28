@@ -1,7 +1,7 @@
 name = "infosec"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
-account_id = "78c174f520fcee55c68bcf73245ec4da"
+# account_id is read from CLOUDFLARE_ACCOUNT_ID env var
 
 [ai]
 binding = "AI"

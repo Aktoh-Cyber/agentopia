@@ -2,7 +2,7 @@ name = "cybersec-py"
 main = "src/entry.py"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["python_workers"]
-account_id = "82d842d586a0298981ab28617ec8ac66"
+# account_id is read from CLOUDFLARE_ACCOUNT_ID env var
 
 [ai]
 binding = "AI"

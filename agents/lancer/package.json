@@ -11,6 +11,6 @@
     "@langchain/community": "^1.1.11",
     "@langchain/core": "^1.1.19",
     "langchain": "^1.2.17",
-    "wrangler": "^3.0.0"
+    "wrangler": "^4.84.1"
   }
 }

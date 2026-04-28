@@ -184,3 +184,9 @@ cython_debug/
 
 # Cookiecutter repositories (maintained separately)
 cookiecutter-repos/
+
+# Legacy submodule directory (canonical source is agents/judge-js/)
+judge-agent/
+
+# macOS
+.DS_Store

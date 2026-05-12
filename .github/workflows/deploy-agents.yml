@@ -203,11 +203,25 @@ jobs:
       - name: Copy agent framework
         run: |
           agent_dir="${{ matrix.agent }}"
-          
+
           # Copy Python agent framework if this is a Python agent
           if [ -f "$agent_dir/src/entry.py" ]; then
             cp -r generators/python/agent_framework "$agent_dir/"
             echo "✅ Copied Python agent framework"
+          fi
+
+      - name: Install JS agent dependencies
+        run: |
+          agent_dir="${{ matrix.agent }}"
+          # JS agents bundle @langchain/core, etc. via esbuild at deploy time.
+          # wrangler deploy runs esbuild which requires node_modules to resolve
+          # bare imports — install deps here for any agent with package.json.
+          if [ -f "$agent_dir/package.json" ]; then
+            echo "Installing dependencies for $agent_dir"
+            (cd "$agent_dir" && (npm ci --no-audit --no-fund 2>/dev/null || npm install --no-audit --no-fund))
+            echo "✅ Installed JS dependencies for $agent_dir"
+          else
+            echo "No package.json in $agent_dir — skipping npm install"
           fi
 
       - name: Sanitize and validate Cloudflare credentials

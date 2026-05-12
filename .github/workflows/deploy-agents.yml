@@ -204,10 +204,16 @@ jobs:
         run: |
           agent_dir="${{ matrix.agent }}"
 
-          # Copy Python agent framework if this is a Python agent
+          # Copy Python agent framework if this is a Python agent.
+          # Pyodide resolves imports relative to the directory containing `main`
+          # (typically src/), so the framework MUST live at src/agent_framework
+          # — not at the agent root. Placing it at the agent root yields
+          # ModuleNotFoundError: No module named 'agent_framework' at deploy time.
           if [ -f "$agent_dir/src/entry.py" ]; then
-            cp -r generators/python/agent_framework "$agent_dir/"
-            echo "✅ Copied Python agent framework"
+            # Wipe any stale copies to avoid duplicated/divergent trees.
+            rm -rf "$agent_dir/agent_framework" "$agent_dir/src/agent_framework"
+            cp -r generators/python/agent_framework "$agent_dir/src/"
+            echo "✅ Copied Python agent framework into $agent_dir/src/"
           fi
 
       - name: Install JS agent dependencies

@@ -144,10 +144,19 @@ export class BaseAgent {
    * Standard CORS headers
    */
   getCorsHeaders() {
+    const allowedOrigins = [
+      'https://horsemen.aktohcyber.com',
+      'http://localhost:3000',
+      'http://localhost:3001',
+    ];
+    const origin = this._currentRequest?.headers?.get('Origin') || '';
+    const allowOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+
     return {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': allowOrigin,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Service-Key',
+      'Vary': 'Origin',
     };
   }
 
@@ -693,6 +702,7 @@ export class BaseAgent {
    * Main request handler
    */
   async fetch(request, env) {
+    this._currentRequest = request;
     const url = new URL(request.url);
     const corsHeaders = this.getCorsHeaders();
 

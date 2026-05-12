@@ -9,7 +9,7 @@ binding = "AI"
 
 [[kv_namespaces]]
 binding = "CACHE"
-id = "94f2859d6efd4fc8830887d5d797324a"
+id = "f367455d90284df4b6849d0311891999"
 
 [vars]
 MAX_TOKENS = "1024"

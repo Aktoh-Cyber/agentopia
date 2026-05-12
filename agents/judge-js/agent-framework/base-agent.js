@@ -283,19 +283,28 @@ export class BaseAgent {
   /**
    * Standard CORS headers
    */
-  getCorsHeaders() {
+  getCorsHeaders(request) {
+    const allowedOrigins = [
+      'https://horsemen.aktohcyber.com',
+      'http://localhost:3000',
+      'http://localhost:3001',
+    ];
+    const origin = request?.headers?.get('Origin') || '';
+    const allowOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+
     return {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': allowOrigin,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Service-Key',
+      'Vary': 'Origin',
     };
   }
 
   /**
    * Handle preflight requests
    */
-  handleOptions() {
-    return new Response(null, { headers: this.getCorsHeaders() });
+  handleOptions(request) {
+    return new Response(null, { headers: this.getCorsHeaders(request) });
   }
 
   /**
@@ -834,11 +843,11 @@ export class BaseAgent {
    */
   async fetch(request, env) {
     const url = new URL(request.url);
-    const corsHeaders = this.getCorsHeaders();
+    const corsHeaders = this.getCorsHeaders(request);
 
     // Handle preflight requests
     if (request.method === 'OPTIONS') {
-      return this.handleOptions();
+      return this.handleOptions(request);
     }
 
     // Serve homepage
@@ -967,7 +976,7 @@ export class BaseAgent {
    * This allows the agent to run its own LLM and stream results directly.
    */
   async handleAgUIRun(request, env) {
-    const corsHeaders = this.getCorsHeaders();
+    const corsHeaders = this.getCorsHeaders(request);
 
     const sseHeaders = {
       'Content-Type': 'text/event-stream',
@@ -1138,7 +1147,7 @@ export class BaseAgent {
    * This is required for CopilotKit MCP integration
    */
   async handleSSERequest(request, env, url) {
-    const corsHeaders = this.getCorsHeaders();
+    const corsHeaders = this.getCorsHeaders(request);
 
     // Create SSE response headers
     const sseHeaders = {
@@ -1208,7 +1217,7 @@ export class BaseAgent {
    * CopilotKit sends tool calls via POST to this endpoint
    */
   async handleSSEMessage(request, env, url) {
-    const corsHeaders = this.getCorsHeaders();
+    const corsHeaders = this.getCorsHeaders(request);
 
     try {
       const body = await request.json();

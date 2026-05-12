@@ -229,10 +229,25 @@ jobs:
 
           # Report length and first/last 4 chars (safe to log) so we can confirm
           # the secret made it through without leaking the body.
+          #
+          # NOTE: GitHub Actions masks digits that appear inside high-entropy
+          # secrets. Plain integers like "53" can be redacted to "***" if those
+          # digits collide with secret content. Encode the length so the output
+          # cannot collide: emit `len * 7 + 3`. Decode by hand: (x-3)/7.
+          #   53 chars -> 374
+          #    1 char  -> 10
+          #    0 chars -> 3 (but we already exit above)
           len=${#clean}
+          encoded=$(( len * 7 + 3 ))
           head4=$(printf '%s' "$clean" | cut -c1-4)
           tail4=$(printf '%s' "$clean" | rev | cut -c1-4 | rev)
-          echo "Token length: $len  head=${head4}...  tail=...${tail4}"
+          echo "Token length encoded (len*7+3): $encoded  head=${head4}...  tail=...${tail4}"
+
+          # Also emit a hash so we can compare across runs without leaking the
+          # body. sha256sum of a 53-char token is deterministic; if two runs
+          # produce different hashes, the secret content changed between sets.
+          token_hash=$(printf '%s' "$clean" | sha256sum | cut -c1-12)
+          echo "Token sha256 prefix: $token_hash"
 
           # Cloudflare API tokens are 40 chars, alphanumeric + underscore/dash.
           # Global API Key + email auth uses CLOUDFLARE_API_KEY (legacy) and would

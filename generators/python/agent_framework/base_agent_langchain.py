@@ -8,7 +8,7 @@ from typing import Any, Optional
 from urllib.parse import urlparse
 
 # For accessing JavaScript APIs via FFI
-from js import console
+from js import Object, console
 from pyodide.ffi import to_js
 
 # Import Workers-specific modules
@@ -42,14 +42,15 @@ class CloudflareWorkersLLM(BaseLLM):
             for msg in messages:
                 cf_messages.append({"role": msg.role, "content": msg.content})
 
-            # Convert to JavaScript format
-            js_messages = to_js(cf_messages)
+            # Convert to JavaScript format — dict_converter ensures plain
+            # JS objects, not Map instances, which the AI binding requires.
             ai_params = to_js(
                 {
-                    "messages": js_messages,
+                    "messages": cf_messages,
                     "max_tokens": kwargs.get("max_tokens", self.max_tokens),
                     "temperature": kwargs.get("temperature", self.temperature),
-                }
+                },
+                dict_converter=Object.fromEntries,
             )
 
             response = await self.env.AI.run(self.model, ai_params)

@@ -9,7 +9,7 @@ from typing import Any, Optional
 from urllib.parse import urlparse
 
 # For accessing JavaScript APIs via FFI
-from js import console
+from js import Object, console
 from pyodide.ffi import to_js
 
 # Import Workers-specific modules
@@ -53,14 +53,15 @@ class CloudflareWorkersLLM(BaseLLM if LANGCHAIN_COMPAT_AVAILABLE else object):
             for msg in messages:
                 cf_messages.append({"role": msg.role, "content": msg.content})
 
-            # Convert to JavaScript format
-            js_messages = to_js(cf_messages)
+            # Convert to JavaScript format — dict_converter ensures plain
+            # JS objects, not Map instances, which the AI binding requires.
             ai_params = to_js(
                 {
-                    "messages": js_messages,
+                    "messages": cf_messages,
                     "max_tokens": kwargs.get("max_tokens", self.max_tokens),
                     "temperature": kwargs.get("temperature", self.temperature),
-                }
+                },
+                dict_converter=Object.fromEntries,
             )
 
             response = await self.env.AI.run(self.model, ai_params)
@@ -168,20 +169,16 @@ class BaseAgent:
     async def call_ai(self, env, question: str) -> str:
         """Call AI model with system prompt (legacy method)"""
         try:
-            # Convert Python data to JavaScript format for the AI call
-            messages = to_js(
-                [
-                    {"role": "system", "content": self.config["system_prompt"]},
-                    {"role": "user", "content": f"Question: {question}"},
-                ]
-            )
-
             ai_params = to_js(
                 {
-                    "messages": messages,
+                    "messages": [
+                        {"role": "system", "content": self.config["system_prompt"]},
+                        {"role": "user", "content": f"Question: {question}"},
+                    ],
                     "max_tokens": self.config["max_tokens"],
                     "temperature": self.config["temperature"],
-                }
+                },
+                dict_converter=Object.fromEntries,
             )
 
             response = await env.AI.run(self.config["model"], ai_params)

@@ -318,7 +318,8 @@ If a question is better suited for a specialized agent, mention it in your respo
         if method == "POST" and url.path == "/admin/tools":
             try:
                 # In production, add authentication here
-                request_data = await request.json()
+                js_data = await request.json()
+                request_data = js_data.to_py() if hasattr(js_data, 'to_py') else js_data
                 tool = request_data.get("tool")
 
                 if tool:

@@ -30,7 +30,7 @@ If a question is not related to vulnerabilities or compliance, politely redirect
     'model': '@cf/meta/llama-3.1-8b-instruct',
     'maxTokens': 512,
     'temperature': 0.3,
-    'cacheEnabled': true,
+    'cacheEnabled': True,
     'cacheTTL': 3600,
     'mcpToolName': 'judge_vulnerability_compliance',
     'expertise': 'vulnerability assessment and compliance',

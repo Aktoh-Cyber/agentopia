@@ -47,7 +47,7 @@ jobs:
               if [[ ! "$agent_name" =~ test ]]; then
                 echo "\"$agent_dir\""
               fi
-            done | jq -s '.')
+            done | jq -cs '.')
             echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             # Detect changes from PR
@@ -72,7 +72,7 @@ jobs:
                   echo "\"$agent_dir\""
                 fi
               fi
-            done | sort -u | jq -s '.')
+            done | sort -u | jq -cs '.')
             
             if [ "$(echo "$agents" | jq 'length')" -gt 0 ]; then
               echo "has_changes=true" >> $GITHUB_OUTPUT

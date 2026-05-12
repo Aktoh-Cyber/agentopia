@@ -39,8 +39,9 @@ jobs:
           
           if [ "${{ github.event.inputs.force_deploy }}" = "true" ]; then
             # Force deploy mode - deploy all agents except test agents
-            agents=$(find agents -name "scripts/deploy.sh" -type f | while read deploy_script; do
-              agent_dir=$(dirname "$(dirname "$deploy_script")")
+            # Use wrangler.toml presence as the marker for a deployable agent
+            agents=$(find agents -mindepth 2 -maxdepth 2 -name "wrangler.toml" -type f | while read toml; do
+              agent_dir=$(dirname "$toml")
               agent_name=$(basename "$agent_dir")
               # Exclude test agents
               if [[ ! "$agent_name" =~ test ]]; then
@@ -55,18 +56,19 @@ jobs:
             else
               base_sha="HEAD~1"
             fi
-            
+
             # Get changed files in agents/
             git diff --name-only "$base_sha" HEAD -- agents/ > changed_files.txt
-            
+
             # Extract unique agent directories from changed files
+            # Use wrangler.toml presence as the marker for a deployable agent
             agents=$(cat changed_files.txt | while read file; do
               if [[ "$file" =~ ^agents/([^/]+)/ ]]; then
                 agent_name="${BASH_REMATCH[1]}"
                 agent_dir="agents/$agent_name"
-                # Only include if it's a valid agent directory with scripts/deploy.sh
+                # Only include if it's a valid agent directory with wrangler.toml
                 # and exclude test agents (containing "test" in the name)
-                if [ -f "$agent_dir/scripts/deploy.sh" ] && [[ ! "$agent_name" =~ test ]]; then
+                if [ -f "$agent_dir/wrangler.toml" ] && [[ ! "$agent_name" =~ test ]]; then
                   echo "\"$agent_dir\""
                 fi
               fi
@@ -124,11 +126,11 @@ jobs:
           # Check required files exist (agents may be Python or JavaScript)
           if [ -f "$agent_dir/src/entry.py" ]; then
             # Python agent
-            required_files=("src/entry.py" "wrangler.toml" "scripts/deploy.sh")
+            required_files=("src/entry.py" "wrangler.toml")
             echo "Detected Python agent"
           elif [ -f "$agent_dir/src/index.js" ]; then
             # JavaScript agent
-            required_files=("src/index.js" "wrangler.toml" "scripts/deploy.sh")
+            required_files=("src/index.js" "wrangler.toml")
             echo "Detected JavaScript agent"
           else
             echo "❌ No valid entry point found (src/entry.py or src/index.js)"
@@ -214,13 +216,18 @@ jobs:
         run: |
           agent_dir="${{ matrix.agent }}"
           cd "$agent_dir"
-          
+
           echo "Deploying agent from $agent_dir"
-          
-          # Use the deploy script
-          chmod +x scripts/deploy.sh
-          ./scripts/deploy.sh
-          
+
+          # Prefer per-agent deploy script if present; otherwise use wrangler deploy
+          # (wrangler.toml is required and is the source of truth for routes/bindings).
+          if [ -x scripts/deploy.sh ] || [ -f scripts/deploy.sh ]; then
+            chmod +x scripts/deploy.sh
+            ./scripts/deploy.sh
+          else
+            npx wrangler@latest deploy
+          fi
+
           echo "✅ Successfully deployed agent"
 
       - name: Update deployment status

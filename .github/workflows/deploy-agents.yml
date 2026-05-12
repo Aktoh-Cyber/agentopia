@@ -210,9 +210,50 @@ jobs:
             echo "✅ Copied Python agent framework"
           fi
 
+      - name: Sanitize and validate Cloudflare credentials
+        env:
+          RAW_CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          # Cloudflare error 6111 ("Invalid format for Authorization header") almost
+          # always means the token has stray whitespace, a trailing newline, or that
+          # a conflicting CLOUDFLARE_EMAIL/CLOUDFLARE_API_KEY pair is also present.
+          # GitHub's secret-injection has been observed to preserve trailing \n when
+          # the secret was pasted from a terminal — strip whitespace defensively.
+
+          clean=$(printf '%s' "$RAW_CF_API_TOKEN" | tr -d '[:space:]')
+
+          if [ -z "$clean" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN secret is empty after stripping whitespace."
+            exit 1
+          fi
+
+          # Report length and first/last 4 chars (safe to log) so we can confirm
+          # the secret made it through without leaking the body.
+          len=${#clean}
+          head4=$(printf '%s' "$clean" | cut -c1-4)
+          tail4=$(printf '%s' "$clean" | rev | cut -c1-4 | rev)
+          echo "Token length: $len  head=${head4}...  tail=...${tail4}"
+
+          # Cloudflare API tokens are 40 chars, alphanumeric + underscore/dash.
+          # Global API Key + email auth uses CLOUDFLARE_API_KEY (legacy) and would
+          # ALSO break wrangler if mixed with CLOUDFLARE_API_TOKEN. Fail fast if
+          # any conflicting auth env vars are set.
+          if [ -n "${CLOUDFLARE_EMAIL:-}" ] || [ -n "${CLOUDFLARE_API_KEY:-}" ]; then
+            echo "::error::Conflicting auth env vars detected. Wrangler should use CLOUDFLARE_API_TOKEN only — unset CLOUDFLARE_EMAIL / CLOUDFLARE_API_KEY."
+            exit 1
+          fi
+
+          # Persist the cleaned token for downstream steps.
+          echo "CLOUDFLARE_API_TOKEN=$clean" >> "$GITHUB_ENV"
+
+      - name: Verify wrangler auth (whoami)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler@latest whoami
+
       - name: Deploy to Cloudflare Workers
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ env.CLOUDFLARE_API_TOKEN }}
         run: |
           agent_dir="${{ matrix.agent }}"
           cd "$agent_dir"
